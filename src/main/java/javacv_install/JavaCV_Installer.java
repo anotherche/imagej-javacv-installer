@@ -5,7 +5,7 @@
  * Other plugins which require javacv may use it to check if necessary libraries are 
  * installed and to install missing components.
  */
-
+//package javacv_install;
 package javacv_install;
 
 import ij.IJ;
@@ -13,9 +13,10 @@ import ij.Macro;
 import ij.Prefs;
 import ij.plugin.PlugIn;
 import ij.plugin.frame.Recorder;
-import ij.gui.GUI;
-import ij.gui.GenericDialog;
-import ij.gui.MultiLineLabel;
+import ij.gui.*;
+//import ij.gui.GUI;
+//import ij.gui.GenericDialog;
+//import ij.gui.MultiLineLabel;
 
 import java.awt.BorderLayout;
 import java.awt.Button;
@@ -27,35 +28,36 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Frame;
 import java.awt.Panel;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
+import java.awt.event.*;
+//import java.awt.event.ActionEvent;
+//import java.awt.event.ActionListener;
+//import java.awt.event.ItemEvent;
+//import java.awt.event.ItemListener;
+//import java.awt.event.KeyEvent;
+//import java.awt.event.KeyListener;
+//import java.awt.event.WindowEvent;
+//import java.awt.event.WindowListener;
 import java.io.File;
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.net.URL;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import java.nio.file.*;
+//import java.nio.file.DirectoryStream;
+//import java.nio.file.Files;
+//import java.nio.file.Path;
+//import java.nio.file.Paths;
+//import java.nio.file.StandardCopyOption;
+import java.util.*;
+//import java.util.Arrays;
+//import java.util.HashMap;
+//import java.util.HashSet;
+//import java.util.Map;
+//import java.util.Set;
+//import java.util.Collections;
+//import java.util.Comparator;
+//import java.util.List;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
-import java.util.Locale;
+//import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -136,6 +138,8 @@ public class JavaCV_Installer implements PlugIn {
 
 	//Installation constants
 
+	private static final String installerVersion = "0.2.3";
+
 	/** Base URL to the maven repository */
 	private static final String BASE_REPO =
 			"https://repo1.maven.org/maven2/"; //"https://repo.maven.apache.org/maven2/"
@@ -181,13 +185,30 @@ public class JavaCV_Installer implements PlugIn {
 		showInfoMsg = false;
 		restartRequired = false;
 		compsPannelInd = -1;
-		try {
-			installerDirectory = new File(JavaCV_Installer.class.getProtectionDomain().getCodeSource().getLocation()
-					.toURI()).getParent()+File.separator;
-		} catch (URISyntaxException e2) {
-			// TODO Auto-generated catch block
-			e2.printStackTrace();
-		}
+		// try {
+			// installerDirectory = new File(JavaCV_Installer.class.getProtectionDomain().getCodeSource().getLocation()
+					// .toURI()).getParent()+File.separator;
+		// } catch (URISyntaxException e2) {
+			// e2.printStackTrace();
+		// }
+		
+//		ClassLoader loader = JavaCV_Installer.class.getClassLoader();
+//		String installerClassPath = loader.getResource("JavaCV_Installer.class").getPath();
+//		//IJ.log(deployClassPath);
+//		if (installerClassPath.startsWith("/") || installerClassPath.startsWith("\\")) installerClassPath = installerClassPath.substring(1);
+//		else if (installerClassPath.startsWith("file:")) installerClassPath = installerClassPath.substring(6);
+//		
+//		installerClassPath = Paths.get(installerClassPath).getParent().toString();
+//		if (installerClassPath.endsWith("JavaCV_Installer.jar!")) 
+//			installerClassPath = installerClassPath.substring(0, installerClassPath.indexOf("JavaCV_Installer.jar!"));
+//		else installerClassPath += File.separatorChar;
+		
+		String installerClassPath = JavaCV_Installer.class.getProtectionDomain().getCodeSource().getLocation().getPath();//Paths.get(deployClassPath).getParent().toString();
+		if (installerClassPath.startsWith("/") || installerClassPath.startsWith("\\")) installerClassPath = installerClassPath.substring(1);
+		if (installerClassPath.startsWith("file:")) installerClassPath = installerClassPath.substring(6);
+		if (installerClassPath.endsWith(".jar")) installerClassPath = installerClassPath.substring(0, installerClassPath.lastIndexOf("JavaCV_Installer"));
+
+		installerDirectory = installerClassPath;
 
 		//Where dependencies are looked for in Fiji or ImageJ
 		GetDependenciesPath();
@@ -211,6 +232,9 @@ public class JavaCV_Installer implements PlugIn {
 
 	}
 
+	public static String getInstallerVersion() {
+		return installerVersion;
+	}
 	
 	
 	static class JavaCVComponent {
@@ -242,6 +266,7 @@ public class JavaCV_Installer implements PlugIn {
 	public void run(String arg) {
 		if(CheckJavaCV(null, null, true, false)) {
 			if(Macro.getOptions()==null) log("javacv is installed");
+			
 		}
 		else
 			log("javacv install failed or canceled");
@@ -1165,25 +1190,48 @@ public class JavaCV_Installer implements PlugIn {
 		String fijiJarsPath = appPath+"jars"+ File.separatorChar;
 		String ijJarsPath = IJ.getDirectory("plugins")+"jars"+ File.separatorChar;
 		boolean fiji = false;
+		
+//		ClassLoader cl = ClassLoader.getSystemClassLoader();
+//		URL[] urls = ((java.net.URLClassLoader) cl).getURLs();
+//		for (URL url: urls) {
+//			if (url.getFile().replace(altSeparator, File.separatorChar).contains(fijiJarsPath)) {
+//				fiji = true;
+//				break;
+//			}
+//		}
+//
+//		if (!fiji) {
+//			cl = IJ.getClassLoader();
+//			urls = ((java.net.URLClassLoader) cl).getURLs();
+//			for (URL url: urls) {
+//				if (url.getFile().replace(altSeparator, File.separatorChar).contains(fijiJarsPath)) {
+//					fiji = true;
+//					break;
+//				}
+//			}
+//		}
+		
+		
+		boolean jarsrtest = false;
 		ClassLoader cl = ClassLoader.getSystemClassLoader();
 		URL[] urls = ((java.net.URLClassLoader) cl).getURLs();
-		for (URL url: urls) {
+		for (URL url: urls) 
 			if (url.getFile().replace(altSeparator, File.separatorChar).contains(fijiJarsPath)) {
-				fiji = true;
+				jarsrtest = true;
+				break;
+			}
+		
+		if (!jarsrtest) {
+		cl = IJ.getClassLoader();
+		urls = ((java.net.URLClassLoader) cl).getURLs();
+		for (URL url: urls) 
+			if (url.getFile().replace(altSeparator, File.separatorChar).contains(fijiJarsPath)) {
+				jarsrtest = true;
 				break;
 			}
 		}
-
-		if (!fiji) {
-			cl = IJ.getClassLoader();
-			urls = ((java.net.URLClassLoader) cl).getURLs();
-			for (URL url: urls) {
-				if (url.getFile().replace(altSeparator, File.separatorChar).contains(fijiJarsPath)) {
-					fiji = true;
-					break;
-				}
-			}
-		}
+		
+		fiji = jarsrtest && (new File(appPath+"db.xml.gz").exists());
 
 		if (fiji) {
 			depsPath = fijiJarsPath;
