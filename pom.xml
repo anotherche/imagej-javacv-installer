@@ -59,7 +59,7 @@
 		<connection>scm:git:git://github.com/anotherche/imagej-javacv-installer.git</connection>
 		<developerConnection>scm:git:git://github.com/anotherche/imagej-javacv-installer.git</developerConnection>
 		<tag>HEAD</tag>
-		<url>ssh://github.com/anotherche/imagej-javacv-installer</url>
+		<url>https://github.com/anotherche/imagej-javacv-installer</url>
 	</scm>
 	
 	<developers>
