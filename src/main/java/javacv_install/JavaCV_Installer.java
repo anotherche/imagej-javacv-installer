@@ -5,18 +5,17 @@
  * Other plugins which require javacv may use it to check if necessary libraries are 
  * installed and to install missing components.
  */
-//package javacv_install;
+
 package javacv_install;
 
 import ij.IJ;
+import ij.ImageJ;
 import ij.Macro;
 import ij.Prefs;
 import ij.plugin.PlugIn;
 import ij.plugin.frame.Recorder;
 import ij.gui.*;
-//import ij.gui.GUI;
-//import ij.gui.GenericDialog;
-//import ij.gui.MultiLineLabel;
+
 
 import java.awt.BorderLayout;
 import java.awt.Button;
@@ -29,55 +28,28 @@ import java.awt.Font;
 import java.awt.Frame;
 import java.awt.Panel;
 import java.awt.event.*;
-//import java.awt.event.ActionEvent;
-//import java.awt.event.ActionListener;
-//import java.awt.event.ItemEvent;
-//import java.awt.event.ItemListener;
-//import java.awt.event.KeyEvent;
-//import java.awt.event.KeyListener;
-//import java.awt.event.WindowEvent;
-//import java.awt.event.WindowListener;
+
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.*;
-//import java.nio.file.DirectoryStream;
-//import java.nio.file.Files;
-//import java.nio.file.Path;
-//import java.nio.file.Paths;
-//import java.nio.file.StandardCopyOption;
+import java.security.CodeSource;
+import java.security.ProtectionDomain;
 import java.util.*;
-//import java.util.Arrays;
-//import java.util.HashMap;
-//import java.util.HashSet;
-//import java.util.Map;
-//import java.util.Set;
-//import java.util.Collections;
-//import java.util.Comparator;
-//import java.util.List;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
-//import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
+import javax.xml.parsers.*;
+import javax.xml.transform.*;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import org.apache.maven.repository.internal.MavenRepositorySystemUtils;
 
-import org.eclipse.aether.AbstractRepositoryListener;
-import org.eclipse.aether.DefaultRepositorySystemSession;
-import org.eclipse.aether.RepositoryEvent;
-import org.eclipse.aether.RepositorySystem;
-import org.eclipse.aether.RepositorySystemSession;
+import org.eclipse.aether.*;
 import org.eclipse.aether.collection.CollectRequest;
 import org.eclipse.aether.connector.basic.BasicRepositoryConnectorFactory;
 import org.eclipse.aether.artifact.*;
@@ -103,15 +75,12 @@ import org.eclipse.aether.version.Version;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
+import org.w3c.dom.*;
 import org.xml.sax.SAXException;
 
 
 
-public class JavaCV_Installer implements PlugIn {
+public class JavaCV_Installer  implements PlugIn{
 
 	private static RepositorySystem repSystem;
 	private static DefaultRepositorySystemSession repSession;
@@ -124,7 +93,7 @@ public class JavaCV_Installer implements PlugIn {
 	private static int compsPannelInd;
 	private static boolean updateLine;
 	private static boolean showInfoMsg;
-	private static String installedVersion;
+	private static String installedJavaCVVersion;
 	private static Set<String> installedComponents;
 	private static Set<String> installedArtifacts;
 	private static List<JavaCVDependency> dependencies;
@@ -134,11 +103,12 @@ public class JavaCV_Installer implements PlugIn {
 	private static String depsPath;
 	private static String natLibsPath;
 	private static String platformSpecifier;
-	public static boolean restartRequired;
+	private static boolean restartRequired;
+	private boolean beQuiet;
 
 	//Installation constants
 
-	private static final String installerVersion = "0.2.3";
+	private static final String installerVersion = "0.3.0";
 
 	/** Base URL to the maven repository */
 	private static final String BASE_REPO =
@@ -164,6 +134,7 @@ public class JavaCV_Installer implements PlugIn {
 	private static final String MAC    = "macosx-x86_64";
 
 	static {
+		
 
 		imagejDirectory = IJ.getDirectory("imagej");
 		updateDirectory = imagejDirectory+"update"+File.separatorChar;
@@ -185,30 +156,24 @@ public class JavaCV_Installer implements PlugIn {
 		showInfoMsg = false;
 		restartRequired = false;
 		compsPannelInd = -1;
-		// try {
-			// installerDirectory = new File(JavaCV_Installer.class.getProtectionDomain().getCodeSource().getLocation()
-					// .toURI()).getParent()+File.separator;
-		// } catch (URISyntaxException e2) {
-			// e2.printStackTrace();
-		// }
 		
-//		ClassLoader loader = JavaCV_Installer.class.getClassLoader();
-//		String installerClassPath = loader.getResource("JavaCV_Installer.class").getPath();
-//		//IJ.log(deployClassPath);
-//		if (installerClassPath.startsWith("/") || installerClassPath.startsWith("\\")) installerClassPath = installerClassPath.substring(1);
-//		else if (installerClassPath.startsWith("file:")) installerClassPath = installerClassPath.substring(6);
-//		
-//		installerClassPath = Paths.get(installerClassPath).getParent().toString();
-//		if (installerClassPath.endsWith("JavaCV_Installer.jar!")) 
-//			installerClassPath = installerClassPath.substring(0, installerClassPath.indexOf("JavaCV_Installer.jar!"));
-//		else installerClassPath += File.separatorChar;
+//		String installerClassPath;
+//		try {
+//			installerClassPath = new File(JavaCV_Installer.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getPath();
+//			if (installerClassPath.startsWith("file:")) installerClassPath = installerClassPath.substring(5);
+//			if (installerClassPath.endsWith(".jar")) installerClassPath = installerClassPath.substring(0, installerClassPath.lastIndexOf("JavaCV_Installer"));
+//			if (!installerClassPath.endsWith(File.separator)) installerClassPath+=File.separator;
+//			installerDirectory = installerClassPath;
+//		} catch (URISyntaxException e2) {
+//			// TODO Auto-generated catch block
+//			e2.printStackTrace();
+//		}
 		
-		String installerClassPath = JavaCV_Installer.class.getProtectionDomain().getCodeSource().getLocation().getPath();//Paths.get(deployClassPath).getParent().toString();
-		if (installerClassPath.startsWith("/") || installerClassPath.startsWith("\\")) installerClassPath = installerClassPath.substring(1);
-		if (installerClassPath.startsWith("file:")) installerClassPath = installerClassPath.substring(6);
-		if (installerClassPath.endsWith(".jar")) installerClassPath = installerClassPath.substring(0, installerClassPath.lastIndexOf("JavaCV_Installer"));
-
-		installerDirectory = installerClassPath;
+		installerDirectory = IJ.getDirectory("plugins")+"JavaCV_Installer"+File.separator;
+		
+		//String installerClassPath = JavaCV_Installer.class.getProtectionDomain().getCodeSource().getLocation().getPath();//Paths.get(deployClassPath).getParent().toString();
+		//if (installerClassPath.startsWith("/") || installerClassPath.startsWith("\\")) installerClassPath = installerClassPath.substring(1);
+		
 
 		//Where dependencies are looked for in Fiji or ImageJ
 		GetDependenciesPath();
@@ -226,14 +191,20 @@ public class JavaCV_Installer implements PlugIn {
 			readInstallCfg();
 		} catch (SAXException | IOException | ParserConfigurationException e1) {
 			log("Installation configuration is missing or incorrect");
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
+			if(IJ.debugMode) { 
+				log(e1.getLocalizedMessage());
+				log(e1.toString());
+			}
 		}
 
 	}
 
 	public static String getInstallerVersion() {
 		return installerVersion;
+	}
+	
+	public static boolean isRestartRequired() {
+		return restartRequired;
 	}
 	
 	
@@ -252,30 +223,79 @@ public class JavaCV_Installer implements PlugIn {
 		}
 	}
 
-	public static void main(String[] args) {
-		if(CheckJavaCV(null, null, true, false)){
-			log("javacv is installed");
-		}
-
-		else
-			log("javacv install failed or canceled");
-
-	}
+//	public static void main(String[] args) {
+//		if(CheckJavaCV(null, null, true, false)){
+//			log("javacv is installed");
+//		}
+//
+//		else
+//			log("javacv install failed or canceled");
+//
+//	}
 
 	@Override
 	public void run(String arg) {
-		if(CheckJavaCV(null, null, true, false)) {
-			if(Macro.getOptions()==null) log("javacv is installed");
-			
+		IJ.register(this.getClass());
+		
+		boolean canWriteToImageJ = new File(IJ.getDirectory("imagej")).canWrite();
+		
+		if (!canWriteToImageJ) {
+            String path = IJ.getDirectory("imagej");
+            String msg = "No write access: "+path;
+            if (IJ.isMacOSX() && path!=null && path.startsWith("/private/var/folders/")) {
+                msg = "ImageJ is in a read-only folder due to Path Randomization.\n"
+                + "To work around this problem, drag ImageJ.app to another\n"
+                + "folder and then (optionally) drag it back.";
+            }
+            IJ.error("JavaCV Installer", msg);
+            return;
+        }
+		
+		String[] split = null;
+		if (arg==null) arg="";
+		arg=arg.trim();
+		if (!arg.isEmpty()) split = arg.split(" ");
+		
+		if(split==null)
+			if(CheckJavaCV(null, null, true, false)) {
+				if(Macro.getOptions()==null) {
+					log("javacv is installed");
+					IJ.log("---------------------------------------------");
+				}
+				
+			}
+			else log("javacv install failed or canceled");
+		else {
+			String version = "";
+			String components = "";
+			beQuiet = arg.indexOf("quiet")!=-1;
+			boolean force = arg.indexOf("force")!=-1;
+			for(String opt : split) 
+				if (opt.indexOf("components:")==0 && opt.length()>11){
+					components = opt.substring(11).replace(',', ' ');
+					break;
+				}
+			for(String opt : split) 
+				if (opt.indexOf("version:")==0 && opt.length()>8){
+					version = opt.substring(8);
+					break;
+				}
+			if(CheckJavaCV(components, version, !beQuiet, force)) {
+				if(Macro.getOptions()==null) {
+					log("javacv is installed");
+					IJ.log("---------------------------------------------");
+				}
+				
+			}
+			else log("javacv install failed or canceled");
 		}
-		else
-			log("javacv install failed or canceled");
 	}
 
 	private static void readInstallCfg() throws SAXException,
 	IOException, ParserConfigurationException {
 
 		File xmlFile = new File(installerDirectory+"installcfg.xml");
+//		IJ.log("xmlFile: "+xmlFile.getPath());
 		if(!xmlFile.exists()) return;
 
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -290,7 +310,7 @@ public class JavaCV_Installer implements PlugIn {
 			return;
 		}
 		
-		installedVersion = nVer.getTextContent();
+		installedJavaCVVersion = nVer.getTextContent();
 
 		installedComponents.clear();
 		NodeList nCompList = doc.getElementsByTagName("component");
@@ -330,7 +350,7 @@ public class JavaCV_Installer implements PlugIn {
 		doc.appendChild(root);
 
 		Element nVer = doc.createElement("version");
-		nVer.appendChild(doc.createTextNode(installedVersion));
+		nVer.appendChild(doc.createTextNode(installedJavaCVVersion));
 		root.appendChild(nVer);
 
 		Element nComps = doc.createElement("components");
@@ -361,6 +381,7 @@ public class JavaCV_Installer implements PlugIn {
 		DOMSource source = new DOMSource(doc);
 
 		File xmlFile = new File(installerDirectory+"installcfg.xml");
+//		IJ.log("xmlFile: "+xmlFile.getPath());
 
 		StreamResult file = new StreamResult(xmlFile);
 
@@ -843,19 +864,18 @@ public class JavaCV_Installer implements PlugIn {
 	 * Determines and return all available versions of an artifact.
 	 */
 
-	public static String getNewestVersion()
-			throws Exception
+	public static String getNewestJavaCVVersion() throws Exception
 	{
 
 		if(newestVersion == null || newestVersion.isEmpty()) getAvailableVersions();
 		return newestVersion;
 	}
 	
-	public static String getInstalledVersion(){
-		return installedVersion;
+	public static String getInstalledJavaCVVersion(){
+		return installedJavaCVVersion;
 	}
 	
-	public static List<String> getInstalledComponents() {
+	public static List<String> getInstalledJavaCVComponents() {
 		if (installedComponents == null) return null;
 		return new ArrayList<String>(installedComponents);
 	}
@@ -1191,47 +1211,28 @@ public class JavaCV_Installer implements PlugIn {
 		String ijJarsPath = IJ.getDirectory("plugins")+"jars"+ File.separatorChar;
 		boolean fiji = false;
 		
+//		boolean jarstest = false;
 //		ClassLoader cl = ClassLoader.getSystemClassLoader();
 //		URL[] urls = ((java.net.URLClassLoader) cl).getURLs();
-//		for (URL url: urls) {
+//		for (URL url: urls) 
 //			if (url.getFile().replace(altSeparator, File.separatorChar).contains(fijiJarsPath)) {
-//				fiji = true;
+//				jarstest = true;
+//				break;
+//			}
+//		
+//		if (!jarstest) {
+//		cl = IJ.getClassLoader();
+//		urls = ((java.net.URLClassLoader) cl).getURLs();
+//		for (URL url: urls) 
+//			if (url.getFile().replace(altSeparator, File.separatorChar).contains(fijiJarsPath)) {
+//				jarstest = true;
 //				break;
 //			}
 //		}
-//
-//		if (!fiji) {
-//			cl = IJ.getClassLoader();
-//			urls = ((java.net.URLClassLoader) cl).getURLs();
-//			for (URL url: urls) {
-//				if (url.getFile().replace(altSeparator, File.separatorChar).contains(fijiJarsPath)) {
-//					fiji = true;
-//					break;
-//				}
-//			}
-//		}
 		
+//		fiji = jarstest && (new File(appPath+"db.xml.gz").exists())  && IJ.getVersion().split("/").length>1;
+		fiji = (new File(appPath+"db.xml.gz").exists())  && IJ.getVersion().split("/").length>1;
 		
-		boolean jarsrtest = false;
-		ClassLoader cl = ClassLoader.getSystemClassLoader();
-		URL[] urls = ((java.net.URLClassLoader) cl).getURLs();
-		for (URL url: urls) 
-			if (url.getFile().replace(altSeparator, File.separatorChar).contains(fijiJarsPath)) {
-				jarsrtest = true;
-				break;
-			}
-		
-		if (!jarsrtest) {
-		cl = IJ.getClassLoader();
-		urls = ((java.net.URLClassLoader) cl).getURLs();
-		for (URL url: urls) 
-			if (url.getFile().replace(altSeparator, File.separatorChar).contains(fijiJarsPath)) {
-				jarsrtest = true;
-				break;
-			}
-		}
-		
-		fiji = jarsrtest && (new File(appPath+"db.xml.gz").exists());
 
 		if (fiji) {
 			depsPath = fijiJarsPath;
@@ -1279,19 +1280,19 @@ public class JavaCV_Installer implements PlugIn {
 
 	
 	private static boolean isInstalledVersionValid() {
-		return installedVersion!=null 
-				&& !installedVersion.isEmpty() 
+		return installedJavaCVVersion!=null 
+				&& !installedJavaCVVersion.isEmpty() 
 				&& versions!=null 
 				&& versions.size()>0 
-				&& versions.contains(installedVersion);
+				&& versions.contains(installedJavaCVVersion);
 	}
 	
 	private static boolean DoesInstalledVersionMeet(String version, boolean treatAsMinVer) {
 		if (isInstalledVersionValid()) {
 			GenericVersionScheme gvs = new GenericVersionScheme();
 			try { 
-				if (treatAsMinVer) return gvs.parseVersion(version).compareTo(gvs.parseVersion(installedVersion))<=0;
-				else return gvs.parseVersion(version).compareTo(gvs.parseVersion(installedVersion))==0;
+				if (treatAsMinVer) return gvs.parseVersion(version).compareTo(gvs.parseVersion(installedJavaCVVersion))<=0;
+				else return gvs.parseVersion(version).compareTo(gvs.parseVersion(installedJavaCVVersion))==0;
 			} catch (InvalidVersionSpecificationException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -1322,7 +1323,7 @@ public class JavaCV_Installer implements PlugIn {
 		Version chkVer;
 		try {
 			chkVer = gvs.parseVersion(ver);
-			if((!isInstalledVersionValid() || chkVer.compareTo(gvs.parseVersion(installedVersion))!=0) && chkVer.compareTo(gvs.parseVersion(reqVersion))!=0)
+			if((!isInstalledVersionValid() || chkVer.compareTo(gvs.parseVersion(installedJavaCVVersion))!=0) && chkVer.compareTo(gvs.parseVersion(reqVersion))!=0)
 				return true;
 		} catch (InvalidVersionSpecificationException e) {
 			// TODO Auto-generated catch block
@@ -1375,7 +1376,7 @@ public class JavaCV_Installer implements PlugIn {
 		if (isInstalledVersionValid()){
 			GenericVersionScheme gvs = new GenericVersionScheme();
 			try {
-				if (gvs.parseVersion(minVersion).compareTo(gvs.parseVersion(installedVersion))<=0){
+				if (gvs.parseVersion(minVersion).compareTo(gvs.parseVersion(installedJavaCVVersion))<=0){
 					if(showInfoMsg) log("Installed JavaCV version is acceptable");
 					return CheckJavaCV(reqCompNames);
 				}
@@ -1432,17 +1433,17 @@ public class JavaCV_Installer implements PlugIn {
 		
 		if(showInfoMsg){
 			log("JavaCV installation config:");
-			log("installed version - "+installedVersion);
+			log("installed version - "+installedJavaCVVersion);
 			log("installed components - "+installedComponents);
 			log( "Available javacv versions - " + versions );
 		}
 
-		if(reqVersion == null || reqVersion.isEmpty()) reqVersion = isInstalledVersionValid()?installedVersion:newestVersion;
+		if(reqVersion == null || reqVersion.isEmpty()) reqVersion = isInstalledVersionValid()?installedJavaCVVersion:newestVersion;
 		if(!versions.contains(reqVersion)){
-			String supposedVer = isInstalledVersionValid()?installedVersion:newestVersion;
+			String supposedVer = isInstalledVersionValid()?installedJavaCVVersion:newestVersion;
 			String msg = "The requested JavaCV version ("+reqVersion+") is unknown. ";
 			String msg1 = "Proceed with the " 
-				+ (supposedVer.equalsIgnoreCase(newestVersion)?"newest version ("+newestVersion:"current version ("+installedVersion)+")?";
+				+ (supposedVer.equalsIgnoreCase(newestVersion)?"newest version ("+newestVersion:"current version ("+installedJavaCVVersion)+")?";
 			ConfirmDialog cd = new ConfirmDialog( messageTitle,msg+msg1);
 
 			if (cd.wasOKed()){
@@ -1468,8 +1469,10 @@ public class JavaCV_Installer implements PlugIn {
 		try {
 			optionalCompList = getComponentsByVer(reqVersion).stream().map(JavaCVComponent::getName).collect(Collectors.toList());
 		} catch (Exception e3) {
-			// TODO Auto-generated catch block
-			e3.printStackTrace();
+			if(IJ.debugMode) { 
+				log(e3.getLocalizedMessage());
+				log(e3.toString());
+			}
 		}
 		
 		//If macro is running check if the installed version meets the requested version
@@ -1478,7 +1481,7 @@ public class JavaCV_Installer implements PlugIn {
 			if (!DoesInstalledVersionMeet(reqVersion, treatAsMinVer)) {
 				if (isInstalledVersionValid()) {
 					ConfirmDialog cd = new ConfirmDialog( messageTitle, "JavaCV version ("+reqVersion
-							+") is requested, which is different from the installed ("+installedVersion+").\n"+
+							+") is requested, which is different from the installed ("+installedJavaCVVersion+").\n"+
 							"Continue with the installation of the requested version (the current version will be uninstalled)?");
 					if(!cd.wasOKed()) {
 						Prefs.set("javacv.install_result", "canceled");
@@ -1486,21 +1489,25 @@ public class JavaCV_Installer implements PlugIn {
 					}
 					macroConfirmed = true;
 				} else {
-					ConfirmDialog cd = new ConfirmDialog( messageTitle, autoInstallMsg);
-					if(!cd.wasOKed()) {
-						Prefs.set("javacv.install_result", "canceled");
-						return false;
-					}
+//					if (showInfoMsg) {
+//						ConfirmDialog cd = new ConfirmDialog( messageTitle, autoInstallMsg);
+//						if(!cd.wasOKed()) {
+//							Prefs.set("javacv.install_result", "canceled");
+//							return false;
+//						}
+//					}
 					macroConfirmed = true;
 				}
 				if(!macroConfirmed && installedComponents!=null && installedComponents.size()>0){
 					for(String comp : optionalCompList) {
 						if(macroOptions.indexOf(comp)>-1 && !installedComponents.contains(comp)) {
-							ConfirmDialog cd = new ConfirmDialog( messageTitle, autoInstallMsg);
-							if(!cd.wasOKed()) {
-								Prefs.set("javacv.install_result", "canceled");
-								return false;
-							}
+//							if (showInfoMsg) {
+//								ConfirmDialog cd = new ConfirmDialog( messageTitle, autoInstallMsg);
+//								if(!cd.wasOKed()) {
+//									Prefs.set("javacv.install_result", "canceled");
+//									return false;
+//								}
+//							}
 							macroConfirmed = true;
 							break;
 						}
@@ -1533,7 +1540,7 @@ public class JavaCV_Installer implements PlugIn {
 			
 			String[] versionsArr = new String[versions.size()];
 			versionsArr = versions.toArray(versionsArr);
-			gd.addMessage("Currently installed: "+(isInstalledVersionValid()?installedVersion:"none")+
+			gd.addMessage("Currently installed: "+(isInstalledVersionValid()?installedJavaCVVersion:"none")+
 					"\nSelect required version");
 			gd.addChoice(versionChoiceLabel, versionsArr, reqVersion);
 			final Choice versionChoice = ((Choice)gd.getChoices().elementAt(0));
@@ -1615,7 +1622,7 @@ public class JavaCV_Installer implements PlugIn {
 
 		if (DoesInstalledVersionMeet(reqVersion, treatAsMinVer)) {
 			if(showInfoMsg) log("The installed JavaCV version meets the minimum requirements");
-			reqVersion = installedVersion;
+			reqVersion = installedJavaCVVersion;
 		}
 		
 		
@@ -1656,8 +1663,8 @@ public class JavaCV_Installer implements PlugIn {
 
 		boolean installConfirmed = false, installed = true;
 
-		if(isInstalledVersionValid() && !reqVersion.equalsIgnoreCase(installedVersion)){
-			String msg = "The current installed JavaCV version ("+installedVersion+") will be changed to "+reqVersion;
+		if(isInstalledVersionValid() && !reqVersion.equalsIgnoreCase(installedJavaCVVersion)){
+			String msg = "The current installed JavaCV version ("+installedJavaCVVersion+") will be changed to "+reqVersion;
 			if(!macroConfirmed){
 				ConfirmDialog cd = new ConfirmDialog(messageTitle, msg +".\nContinue?");
 				if(!(installConfirmed = cd.wasOKed())) {
@@ -1700,26 +1707,31 @@ public class JavaCV_Installer implements PlugIn {
 			installedComponents.clear();
 			log(" ");
 			log("Installing selected version...");
+			IJ.log("=======================================");
 		}
 
 
 
 		Set<String> newInstalled = new HashSet<String>(dependencies.stream().map(x->x.getDirectory()+x.getName()).collect(Collectors.toList()));
+		boolean installEvent = false;
 		for(JavaCVDependency dep : dependencies) 
 			if (forceReinstall || !dep.isInstalled()) {
 				if (!forceReinstall && !installConfirmed) {
 					if(!(installConfirmed = showInfoMsg | macroConfirmed)) {
 						
-						ConfirmDialog cd = new ConfirmDialog(messageTitle, autoInstallMsg);
-						if(!(installConfirmed = cd.wasOKed())) {
-							Prefs.set("javacv.install_result", "canceled");
-							return false;
-						}
+//						if (showInfoMsg) {
+//							ConfirmDialog cd = new ConfirmDialog( messageTitle, autoInstallMsg);
+//							if(!cd.wasOKed()) {
+//								Prefs.set("javacv.install_result", "canceled");
+//								return false;
+//							}
+//						}
 					}
 				}
 
 				try {
 					if (dep.Install()) {
+						installEvent = true;
 						log(dep.getName()+" will be installed to "+dep.getDirectory()); 
 					}
 					else {
@@ -1739,8 +1751,9 @@ public class JavaCV_Installer implements PlugIn {
 
 
 		////Try to cleanup conflicts and previous incorrect installations 
+		boolean conflictsFound = false;
 		try {
-			boolean conflictsFound = false;
+			
 			//String platformName = platformSpecifier.substring(0, platformSpecifier.indexOf("-"));
 			//GenericVersionScheme gvs = new GenericVersionScheme();
 			if (showInfoMsg) {
@@ -1768,21 +1781,24 @@ public class JavaCV_Installer implements PlugIn {
 					}
 			}
 			
-			installConfirmed |= conflictsFound;
+			
 			
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
+		installConfirmed = installConfirmed || conflictsFound || installEvent;
+		
 		if (installConfirmed || forceReinstall) {
 			IJ.showMessage("JavaCV installation", "Please restart ImageJ now");
 			log("ImageJ restart is required after javacv installation!");
+			IJ.log("---------------------------------------------");
 			restartRequired = true;
 		} else restartRequired = false;
 
 		if (installed){
-			installedVersion=reqVersion;
+			installedJavaCVVersion=reqVersion;
 			installedComponents.addAll(reqComps);
 			installedArtifacts.addAll(newInstalled);//(artifactResults.stream().map(x->x.getArtifact().getFile().getPath()).collect(Collectors.toList()));
 			try {
@@ -1798,10 +1814,17 @@ public class JavaCV_Installer implements PlugIn {
 		return installed;	
 	}
 
-
-
-
-
 }
+
+//interface JavaCVInstallerInterface extends PlugIn {
+//	//abstract public void run(String arg);
+//	public boolean CheckJavaCV(String comps, String ver, boolean dial, boolean force);
+//	public boolean CheckMinJavaCV(String comps, String ver);
+//	public String getInstallerVersion();
+//	public String getInstalledJavaCVVersion();
+//	public String getNewestJavaCVVersion()  throws Exception;
+//	public List<String> getInstalledJavaCVComponents();
+//	public boolean isRestartRequired();
+//}
 
 

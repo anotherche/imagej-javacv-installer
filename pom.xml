@@ -14,7 +14,7 @@
 
 	<groupId>anotherche.plugins.imagej</groupId> 
     <artifactId>JavaCV_Installer</artifactId>
-    <version>0.2.3</version>
+    <version>0.3.0</version>
 	
 	<name>ImageJ_JavaCV_Installer</name>
 	<url>http://imagej.net/PhotoBend</url>
@@ -86,7 +86,6 @@
 	
 	<properties>
 		<package-name>javacv_install</package-name>
-		<main-class>JavaCV_Installer</main-class>
 		<license.licenseName>gpl</license.licenseName>
 		<license.copyrightOwners>ISSCM SB RAS</license.copyrightOwners>
 
