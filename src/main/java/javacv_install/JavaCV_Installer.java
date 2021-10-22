@@ -600,7 +600,8 @@ public class JavaCV_Installer  implements PlugIn{
 //				trInit = true;
 //			}
 			
-			log( message, event.getResource().getResourceName().indexOf(".jar")==-1 );
+			if(!event.getResource().getResourceName().endsWith(".xml"))
+				log( message, event.getResource().getResourceName().indexOf(".jar")==-1 );
 			
 			//updateLine = event.getResource().getResourceName().indexOf(".jar")==-1;
 			//	    	if (event.getResource().getResourceName().indexOf(".jar")!=-1) {
