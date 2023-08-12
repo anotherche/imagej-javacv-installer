@@ -9,7 +9,6 @@
 package javacv_install;
 
 import ij.IJ;
-import ij.ImageJ;
 import ij.Macro;
 import ij.Prefs;
 import ij.plugin.PlugIn;
@@ -31,11 +30,7 @@ import java.awt.event.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.file.*;
-import java.security.CodeSource;
-import java.security.ProtectionDomain;
 import java.util.*;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -69,14 +64,14 @@ import org.eclipse.aether.util.filter.PatternExclusionsDependencyFilter;
 import org.eclipse.aether.util.filter.PatternInclusionsDependencyFilter;
 import org.eclipse.aether.util.graph.manager.DependencyManagerUtils;
 import org.eclipse.aether.util.graph.transformer.ConflictResolver;
-import org.eclipse.aether.util.version.GenericVersionScheme;
-import org.eclipse.aether.version.InvalidVersionSpecificationException;
-import org.eclipse.aether.version.Version;
 
+import org.eclipse.aether.version.Version;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.*;
 import org.xml.sax.SAXException;
+
+import javacv_install.JavaCV_Installer_launcher.VerParser;
 
 
 
@@ -108,7 +103,7 @@ public class JavaCV_Installer  implements PlugIn{
 
 	//Installation constants
 
-	private static final String installerVersion = "0.3.0";
+	private static final String installerVersion = "0.3.1";
 
 	/** Base URL to the maven repository */
 	private static final String BASE_REPO =
@@ -126,24 +121,29 @@ public class JavaCV_Installer  implements PlugIn{
 
 	/** Platform specifier for the 32-bit linux */
 	private static final String LIN_32 = "linux-x86";
+	private static final String LIN_ARM_32 = "linux-armhf";
 
 	/** Platform specifier for the 64-bit linux */
 	private static final String LIN_64 = "linux-x86_64";
+	private static final String LIN_ARM_64 = "linux-arm64";
 
 	/** Platform specifier for the mac osx */
 	private static final String MAC    = "macosx-x86_64";
+	private static final String MAC_ARM    = "macosx-arm64";
 
 	static {
 		
 
 		imagejDirectory = IJ.getDirectory("imagej");
 		updateDirectory = imagejDirectory+"update"+File.separatorChar;
+		boolean isarm = isARM();
+		boolean is64 = IJ.is64Bit();
 		if(IJ.isLinux())
-			platformSpecifier = IJ.is64Bit() ? LIN_64 : LIN_32;
+			platformSpecifier = is64 ? (isarm ? LIN_ARM_64 : LIN_64 ): (isarm ? LIN_ARM_32 : LIN_32 );
 		else if(IJ.isWindows())
-			platformSpecifier = IJ.is64Bit() ? WIN_64 : WIN_32;
+			platformSpecifier = is64 ? WIN_64 : WIN_32;
 		else if(IJ.isMacOSX())
-			platformSpecifier = MAC;
+			platformSpecifier = isarm ? MAC_ARM : MAC;
 		repSystem = Booter.newRepositorySystem();
 		repSession = Booter.newRepositorySystemSession( repSystem );
 		repSession.setConfigProperty( ConflictResolver.CONFIG_PROP_VERBOSE, true );
@@ -170,7 +170,7 @@ public class JavaCV_Installer  implements PlugIn{
 //		}
 		
 		installerDirectory = IJ.getDirectory("plugins")+"JavaCV_Installer"+File.separator;
-		
+				
 		//String installerClassPath = JavaCV_Installer.class.getProtectionDomain().getCodeSource().getLocation().getPath();//Paths.get(deployClassPath).getParent().toString();
 		//if (installerClassPath.startsWith("/") || installerClassPath.startsWith("\\")) installerClassPath = installerClassPath.substring(1);
 		
@@ -380,10 +380,11 @@ public class JavaCV_Installer  implements PlugIn{
 
 		DOMSource source = new DOMSource(doc);
 
+		JavaCV_Installer_launcher.CheckCreateDirectory(installerDirectory);
 		File xmlFile = new File(installerDirectory+"installcfg.xml");
 //		IJ.log("xmlFile: "+xmlFile.getPath());
 
-		StreamResult file = new StreamResult(xmlFile);
+		StreamResult file = new StreamResult(xmlFile.toURI().getPath());
 
 		transf.transform(source, file);
 
@@ -903,8 +904,9 @@ public class JavaCV_Installer  implements PlugIn{
 
 		// append all interdependencies
 		if (showInfoMsg) log("Checking interdependencies...");
-		GenericVersionScheme gvs = new GenericVersionScheme();
-		if (gvs.parseVersion(reqVersion).compareTo(gvs.parseVersion("1.4.4"))>0) {
+		//GenericVersionScheme gvs = new GenericVersionScheme();
+		//if (gvs.parseVersion(reqVersion).compareTo(gvs.parseVersion("1.4.4"))>0) {
+		if (new VerParser(reqVersion).compareTo(new VerParser("1.4.4"))>0 ) {
 			ArtifactDescriptorRequest dRequest = new ArtifactDescriptorRequest();
 			dRequest.setRepositories( Booter.newRepositories( repSystem, repSession ) );
 
@@ -964,7 +966,8 @@ public class JavaCV_Installer  implements PlugIn{
 		if (showInfoMsg && depRes!=null) log("Done");
 		
 		DependencyResult depRes_gpl=null;
-		if (reqComps.contains("ffmpeg") && gvs.parseVersion(reqVersion).compareTo(gvs.parseVersion("1.5.4"))>0) {
+		//if (reqComps.contains("ffmpeg") && gvs.parseVersion(reqVersion).compareTo(gvs.parseVersion("1.5.4"))>0) {
+		if (reqComps.contains("ffmpeg") && new VerParser(reqVersion).compareTo(new VerParser("1.5.4"))>0) {
 			if (showInfoMsg) log("Resolving optional ffmpeg-gpl dependencies...");
 			String ffmpegVersion="";
 			for ( ArtifactResult artifactResult : depRes.getArtifactResults() ){
@@ -1290,22 +1293,25 @@ public class JavaCV_Installer  implements PlugIn{
 	
 	private static boolean DoesInstalledVersionMeet(String version, boolean treatAsMinVer) {
 		if (isInstalledVersionValid()) {
-			GenericVersionScheme gvs = new GenericVersionScheme();
-			try { 
-				if (treatAsMinVer) return gvs.parseVersion(version).compareTo(gvs.parseVersion(installedJavaCVVersion))<=0;
-				else return gvs.parseVersion(version).compareTo(gvs.parseVersion(installedJavaCVVersion))==0;
-			} catch (InvalidVersionSpecificationException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+//			GenericVersionScheme gvs = new GenericVersionScheme();
+//			try { 
+//				if (treatAsMinVer) return gvs.parseVersion(version).compareTo(gvs.parseVersion(installedJavaCVVersion))<=0;
+//				else return gvs.parseVersion(version).compareTo(gvs.parseVersion(installedJavaCVVersion))==0;
+//				
+//			} catch (InvalidVersionSpecificationException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+			if (treatAsMinVer) return new VerParser(version).compareTo(new VerParser(installedJavaCVVersion))<=0;
+			else return new VerParser(version).compareTo(new VerParser(installedJavaCVVersion))==0;
 		}
 		return false;
 	}
 	
-	private static boolean IsFileConflicting (Path path, String reqVersion) {
+	static boolean IsFileConflicting (Path path, String reqVersion) {
 		String name = path.getFileName().toString();
 		String platformName = platformSpecifier.substring(0, platformSpecifier.indexOf("-"));
-		GenericVersionScheme gvs = new GenericVersionScheme();
+		//GenericVersionScheme gvs = new GenericVersionScheme();
 		int platformIndex = name.indexOf(platformName);
 		if (platformIndex>0) {
 			String check64bit = name.substring(platformIndex + platformName.length() + 4);
@@ -1314,25 +1320,23 @@ public class JavaCV_Installer  implements PlugIn{
 				return true;
 			}
 		}
-		String ver = name.replaceAll(".jar","").replaceAll("[a-zA-Z]","");
-		while(ver.startsWith("-") ) ver = ver.substring(1);
-		while(ver.endsWith("-") ) ver = ver.substring(0, ver.length()-1);
-		int Dash = ver.indexOf("--");
-		if (Dash>-1) ver = ver.substring(0,Dash);
-		Dash = ver.indexOf("-");
-		if (Dash>-1) ver = ver.substring(Dash+1);
-		Version chkVer;
-		try {
-			chkVer = gvs.parseVersion(ver);
-			if((!isInstalledVersionValid() || chkVer.compareTo(gvs.parseVersion(installedJavaCVVersion))!=0) && chkVer.compareTo(gvs.parseVersion(reqVersion))!=0)
-				return true;
-		} catch (InvalidVersionSpecificationException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		String ver = JavaCV_Installer_launcher.JarVersion(name);
+//		Version chkVer;
+//		try {
+//			chkVer = gvs.parseVersion(ver);
+//			if((!isInstalledVersionValid() || chkVer.compareTo(gvs.parseVersion(installedJavaCVVersion))!=0) && chkVer.compareTo(gvs.parseVersion(reqVersion))!=0)
+//				return true;
+//		} catch (InvalidVersionSpecificationException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+		VerParser chkVer = new VerParser(ver);
+		if((!isInstalledVersionValid() || chkVer.compareTo(new VerParser(installedJavaCVVersion))!=0) && chkVer.compareTo(new VerParser(reqVersion))!=0) return true;
 		
 		return false;
 	}
+	
+	
 	
 	
 	/**
@@ -1375,15 +1379,19 @@ public class JavaCV_Installer  implements PlugIn{
 	 */
 	public static boolean CheckMinJavaCV(String reqCompNames, String minVersion){
 		if (isInstalledVersionValid()){
-			GenericVersionScheme gvs = new GenericVersionScheme();
-			try {
-				if (gvs.parseVersion(minVersion).compareTo(gvs.parseVersion(installedJavaCVVersion))<=0){
-					if(showInfoMsg) log("Installed JavaCV version is acceptable");
-					return CheckJavaCV(reqCompNames);
-				}
-			} catch (InvalidVersionSpecificationException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+//			GenericVersionScheme gvs = new GenericVersionScheme();
+//			try {
+//				if (gvs.parseVersion(minVersion).compareTo(gvs.parseVersion(installedJavaCVVersion))<=0){
+//					if(showInfoMsg) log("Installed JavaCV version is acceptable");
+//					return CheckJavaCV(reqCompNames);
+//				}
+//			} catch (InvalidVersionSpecificationException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+			if (new VerParser(minVersion).compareTo(new VerParser(installedJavaCVVersion))<=0){
+				if(showInfoMsg) log("Installed JavaCV version is acceptable");
+				return CheckJavaCV(reqCompNames);
 			}
 		}
 		//log("The requested version is newer than installed");
@@ -1759,7 +1767,7 @@ public class JavaCV_Installer  implements PlugIn{
 			//GenericVersionScheme gvs = new GenericVersionScheme();
 			if (showInfoMsg) {
 				log(" ");
-				log("Searching possible conflicts...");
+				log("Searching for possible conflicts...");
 			}
 			List<String> allComps = getComponentsByVer(reqVersion).stream().map(x->x.name).collect(Collectors.toList());
 			allComps.add("javacv");
@@ -1813,6 +1821,12 @@ public class JavaCV_Installer  implements PlugIn{
 		}
 		
 		return installed;	
+	}
+	
+	public static boolean isARM() {
+		
+		String osarch = System.getProperty("os.arch");
+		return osarch!=null && (osarch.indexOf("aarch")!=-1 || (osarch.indexOf("ARM")!=-1) || (osarch.indexOf("arm")!=-1));
 	}
 
 }

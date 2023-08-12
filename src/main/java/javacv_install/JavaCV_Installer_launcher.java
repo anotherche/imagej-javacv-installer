@@ -7,15 +7,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
-import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.net.URLConnection;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -25,10 +23,6 @@ import java.util.stream.Stream;
 import ij.IJ;
 import ij.Prefs;
 import ij.plugin.PlugIn;
-import javacv_install.JavaCV_Installer;
-
-
-
 
 
 public class JavaCV_Installer_launcher implements PlugIn{
@@ -263,9 +257,26 @@ public class JavaCV_Installer_launcher implements PlugIn{
 		}
 		
 		public boolean isInstalled() {
-			return (new File(depDirectory+depFilename)).exists();
+			if ((new File(depDirectory+depFilename)).exists()) return true; 
+			DirectoryStream<Path> dirStream;
+			try {
+				dirStream = Files.newDirectoryStream(Paths.get(depDirectory), depName+"*.jar");
+				for (Path path : dirStream){
+					String name = path.getFileName().toString();
+					String ver = JarVersion(name);
+					VerParser chkVer = new VerParser(ver);
+					VerParser reqDepVer = new VerParser(depVersion);
+					if(chkVer.compareTo(reqDepVer)>=0) return true;
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			return false;
+			
 		}
 		
+				
 		/**
 		 * Download and install an artifact specified by the dependency 
 		*/
@@ -308,8 +319,57 @@ public class JavaCV_Installer_launcher implements PlugIn{
 		}
 	}
 	
+	static class VerParser implements Comparable<VerParser> {
+
+	    private String version;
+
+	    public final String get() {
+	        return this.version;
+	    }
+
+	    public VerParser(String version) {
+	        if(version == null)
+	            throw new IllegalArgumentException("Version can not be null");
+	        if(!version.matches("[0-9]+(\\.[0-9]+)*"))
+	            throw new IllegalArgumentException("Invalid version format");
+	        this.version = version;
+	    }
+
+	    @Override public int compareTo(VerParser that) {
+	        if(that == null)
+	            return 1;
+	        String[] thisParts = this.get().split("\\.");
+	        String[] thatParts = that.get().split("\\.");
+	        int length = Math.max(thisParts.length, thatParts.length);
+	        for(int i = 0; i < length; i++) {
+	            int thisPart = i < thisParts.length ?
+	                Integer.parseInt(thisParts[i]) : 0;
+	            int thatPart = i < thatParts.length ?
+	                Integer.parseInt(thatParts[i]) : 0;
+	            if(thisPart < thatPart)
+	                return -1;
+	            if(thisPart > thatPart)
+	                return 1;
+	        }
+	        return 0;
+	    }
+
+	    @Override public boolean equals(Object that) {
+	        if(this == that)
+	            return true;
+	        if(that == null)
+	            return false;
+	        if(this.getClass() != that.getClass())
+	            return false;
+	        return this.compareTo((VerParser) that) == 0;
+	    }
+
+	}
+
+
+	
 	/** Checks if directory exists, creates it if not, and checks if we can write to it*/
-	private static boolean CheckCreateDirectory(String path) {
+	static boolean CheckCreateDirectory(String path) {
 		File directory = new File(path);
 		if(!directory.exists() && !directory.mkdirs()) {
 			IJ.log("Can't create folder "+path);
@@ -323,6 +383,19 @@ public class JavaCV_Installer_launcher implements PlugIn{
 		}
 		return true;
 	}
+	
+	static String JarVersion(String name)
+	{
+		String ver = name.replaceAll(".jar","").replaceAll("[a-zA-Z]","");
+		while(ver.startsWith("-") ) ver = ver.substring(1);
+		while(ver.endsWith("-") ) ver = ver.substring(0, ver.length()-1);
+		int Dash = ver.indexOf("--");
+		if (Dash>-1) ver = ver.substring(0,Dash);
+		Dash = ver.indexOf("-");
+		if (Dash>-1) ver = ver.substring(Dash+1);
+		return ver;
+	}
+	
 	/**
 	 * Reads all bytes from the given InputStream and returns it as a
 	 * byte array.
