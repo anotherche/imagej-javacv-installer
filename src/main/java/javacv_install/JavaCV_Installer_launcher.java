@@ -74,7 +74,7 @@ public class JavaCV_Installer_launcher implements PlugIn{
 		/**where to deploy the Installer*/
 		installerDirectory = IJ.getDirectory("plugins")+installerClassName+File.separatorChar;
 		dependencies = new ArrayList<Dependency>();
-		dependencyPath = GetDependenciesPath();//installerDirectory;
+		dependencyPath = getDependenciesPath();//installerDirectory;
 		
 		for (int i = 0; i<artifacts.size();i++) {
 			dependencies.add(new Dependency (artifacts.get(i).getName(), artifacts.get(i).getVersion(), dependencyPath, artifacts.get(i).getURL()));
@@ -92,7 +92,7 @@ public class JavaCV_Installer_launcher implements PlugIn{
 			return;
 		}
 		IJ.register(this.getClass());
-		if(CheckDependencies(false, false)){
+		if(checkDependencies(false, false)){
 //			if(restartRequired) {
 //				Prefs.set("javacv.install_result_launcher", "restart required");
 //				IJ.log("Please restart ImageJ to proceed with installation of necessary JavaCV libraries.");
@@ -263,7 +263,7 @@ public class JavaCV_Installer_launcher implements PlugIn{
 				dirStream = Files.newDirectoryStream(Paths.get(depDirectory), depName+"*.jar");
 				for (Path path : dirStream){
 					String name = path.getFileName().toString();
-					String ver = JarVersion(name);
+					String ver = getJarVersion(name);
 					VerParser chkVer = new VerParser(ver);
 					VerParser reqDepVer = new VerParser(depVersion);
 					if(chkVer.compareTo(reqDepVer)>=0) return true;
@@ -280,9 +280,9 @@ public class JavaCV_Installer_launcher implements PlugIn{
 		/**
 		 * Download and install an artifact specified by the dependency 
 		*/
-		public boolean Install() throws Exception {
+		public boolean install() throws Exception {
 			boolean success = false;
-			if (!CheckCreateDirectory(depDirectory)) return success;
+			if (!checkCreateDirectory(depDirectory)) return success;
 		
 			IJ.log("downloading " + depURL);
 			InputStream is = null;
@@ -369,7 +369,7 @@ public class JavaCV_Installer_launcher implements PlugIn{
 
 	
 	/** Checks if directory exists, creates it if not, and checks if we can write to it*/
-	static boolean CheckCreateDirectory(String path) {
+	static boolean checkCreateDirectory(String path) {
 		File directory = new File(path);
 		if(!directory.exists() && !directory.mkdirs()) {
 			IJ.log("Can't create folder "+path);
@@ -384,7 +384,7 @@ public class JavaCV_Installer_launcher implements PlugIn{
 		return true;
 	}
 	
-	static String JarVersion(String name)
+	static String getJarVersion(String name)
 	{
 		String ver = name.replaceAll(".jar","").replaceAll("[a-zA-Z]","");
 		while(ver.startsWith("-") ) ver = ver.substring(1);
@@ -413,7 +413,7 @@ public class JavaCV_Installer_launcher implements PlugIn{
 		return buf.toByteArray();
 	}
 	
-	private static String GetDependenciesPath(){
+	private static String getDependenciesPath(){
 		
 		char altSeparator = '/'== File.separatorChar?'\\':'/';
 		String appPath = IJ.getDirectory("imagej").replace(altSeparator, File.separatorChar);
@@ -463,7 +463,7 @@ public class JavaCV_Installer_launcher implements PlugIn{
 	 * Checks if all necessary dependencies are installed, 
 	 * prompts to install if missing.
 	 */
-	private static boolean CheckDependencies(boolean confirmRequired, boolean forceReinstall){
+	private static boolean checkDependencies(boolean confirmRequired, boolean forceReinstall){
 	
 		
 		
@@ -488,7 +488,7 @@ public class JavaCV_Installer_launcher implements PlugIn{
 											"Auto-install?"))) return false;
 				
 				try {
-					if (!dep.Install()) return false;
+					if (!dep.install()) return false;
 					else {
 						updateLoader = installEvent = true;
 						if (checkConflict(dependencyPath, dep)) {
@@ -526,7 +526,7 @@ public class JavaCV_Installer_launcher implements PlugIn{
 					new String[]{".jar"}, true);
 			for (String jarFile : jarFiles) {
 				if(Paths.get(jarFile).compareTo(Paths.get(path, fileName))!=0) {
-					RemoveFile(jarFile);
+					removeFile(jarFile);
 					//IJ.log("Remove file "+jarFile+" CONFLICTING WITH "+Paths.get(path, fileName).toString());
 					remove = true;
 				}
@@ -540,7 +540,7 @@ public class JavaCV_Installer_launcher implements PlugIn{
 		return remove;
 	}
 	
-	private static boolean RemoveFile(String fileToRemove) throws Exception {
+	private static boolean removeFile(String fileToRemove) throws Exception {
 
 		if(!(new File(fileToRemove)).exists()){
 			return true;
@@ -549,7 +549,7 @@ public class JavaCV_Installer_launcher implements PlugIn{
 		String imagejDirectory = IJ.getDirectory("imagej");
 		String updateDirectory = imagejDirectory+"update"+File.separatorChar;
 		String dstDirectory = updateDirectory+(path.getParent().toString()+File.separatorChar).substring(imagejDirectory.length());
-		if (!CheckCreateDirectory(dstDirectory)) return false;
+		if (!checkCreateDirectory(dstDirectory)) return false;
 		
 		String dstPath = dstDirectory + path.getFileName();
 		try {

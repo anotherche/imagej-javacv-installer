@@ -176,7 +176,7 @@ public class JavaCV_Installer  implements PlugIn{
 		
 
 		//Where dependencies are looked for in Fiji or ImageJ
-		GetDependenciesPath();
+		getDependenciesPath();
 
 		
 
@@ -257,7 +257,7 @@ public class JavaCV_Installer  implements PlugIn{
 		if (!arg.isEmpty()) split = arg.split(" ");
 		
 		if(split==null)
-			if(CheckJavaCV(null, null, true, false)) {
+			if(checkJavaCV(null, null, true, false)) {
 				if(Macro.getOptions()==null) {
 					log("javacv is installed");
 					IJ.log("---------------------------------------------");
@@ -280,7 +280,7 @@ public class JavaCV_Installer  implements PlugIn{
 					version = opt.substring(8);
 					break;
 				}
-			if(CheckJavaCV(components, version, !beQuiet, force)) {
+			if(checkJavaCV(components, version, !beQuiet, force)) {
 				if(Macro.getOptions()==null) {
 					log("javacv is installed");
 					IJ.log("---------------------------------------------");
@@ -380,7 +380,7 @@ public class JavaCV_Installer  implements PlugIn{
 
 		DOMSource source = new DOMSource(doc);
 
-		JavaCV_Installer_launcher.CheckCreateDirectory(installerDirectory);
+		JavaCV_Installer_launcher.checkCreateDirectory(installerDirectory);
 		File xmlFile = new File(installerDirectory+"installcfg.xml");
 //		IJ.log("xmlFile: "+xmlFile.getPath());
 
@@ -882,7 +882,7 @@ public class JavaCV_Installer  implements PlugIn{
 		return new ArrayList<String>(installedComponents);
 	}
 
-	private static List<ArtifactResult> Resolve(String reqVersion, List<String> reqComps)
+	private static List<ArtifactResult> resolveDependencies(String reqVersion, List<String> reqComps)
 			throws Exception
 	{
 
@@ -1032,7 +1032,7 @@ public class JavaCV_Installer  implements PlugIn{
 		/**
 		 * Install a JavaCV component specified by the dependency 
 		 */
-		public boolean Install() throws Exception {
+		public boolean install() throws Exception {
 
 			if(!(new File(srcPath)).exists()){
 				log("Source file not found "+srcPath);
@@ -1065,7 +1065,7 @@ public class JavaCV_Installer  implements PlugIn{
 		/**
 		 * Remove JavaCV component specified by the dependency 
 		 */
-		public boolean Remove() throws Exception {
+		public boolean remove() throws Exception {
 
 			if(!(new File(depDirectory + depFilename)).exists()){
 				return true;
@@ -1208,7 +1208,7 @@ public class JavaCV_Installer  implements PlugIn{
 	}
 	
 
-	private static void GetDependenciesPath(){
+	private static void getDependenciesPath(){
 		char altSeparator = '/'== File.separatorChar?'\\':'/';
 		String appPath = IJ.getDirectory("imagej").replace(altSeparator, File.separatorChar);
 		String fijiJarsPath = appPath+"jars"+ File.separatorChar;
@@ -1291,7 +1291,7 @@ public class JavaCV_Installer  implements PlugIn{
 				&& versions.contains(installedJavaCVVersion);
 	}
 	
-	private static boolean DoesInstalledVersionMeet(String version, boolean treatAsMinVer) {
+	private static boolean doesInstalledVersionMeet(String version, boolean treatAsMinVer) {
 		if (isInstalledVersionValid()) {
 //			GenericVersionScheme gvs = new GenericVersionScheme();
 //			try { 
@@ -1320,7 +1320,7 @@ public class JavaCV_Installer  implements PlugIn{
 				return true;
 			}
 		}
-		String ver = JavaCV_Installer_launcher.JarVersion(name);
+		String ver = JavaCV_Installer_launcher.getJarVersion(name);
 //		Version chkVer;
 //		try {
 //			chkVer = gvs.parseVersion(ver);
@@ -1345,8 +1345,8 @@ public class JavaCV_Installer  implements PlugIn{
 	 * prompts to install if missing.
 	 * It assumes that the currently installed version is acceptable (or the newest if none is installed).
 	 */
-	public static boolean CheckJavaCV(String reqCompNames, boolean showOptDlg, boolean forceReinstall){
-		return CheckJavaCV(reqCompNames, null, showOptDlg, forceReinstall);
+	public static boolean checkJavaCV(String reqCompNames, boolean showOptDlg, boolean forceReinstall){
+		return checkJavaCV(reqCompNames, null, showOptDlg, forceReinstall);
 	}
 	
 	/**
@@ -1355,8 +1355,8 @@ public class JavaCV_Installer  implements PlugIn{
 	 * prompts to install if missing.
 	 * Options dialog is not displayed. Only missing files are installed.
 	 */
-	public static boolean CheckJavaCV(String reqCompNames, String reqVersion){
-		return CheckJavaCV(reqCompNames, reqVersion, false, false);
+	public static boolean checkJavaCV(String reqCompNames, String reqVersion){
+		return checkJavaCV(reqCompNames, reqVersion, false, false);
 	}
 	
 	/**
@@ -1366,8 +1366,8 @@ public class JavaCV_Installer  implements PlugIn{
 	 * It assumes that the currently installed version is acceptable (or the newest if none is installed).
 	 * Options dialog is not displayed. Only missing files are installed.
 	 */
-	public static boolean CheckJavaCV(String reqCompNames){
-		return CheckJavaCV(reqCompNames, null, false, false);
+	public static boolean checkJavaCV(String reqCompNames){
+		return checkJavaCV(reqCompNames, null, false, false);
 	}
 	
 	/**
@@ -1377,7 +1377,7 @@ public class JavaCV_Installer  implements PlugIn{
 	 * Minimal required version is specified.
 	 * Options dialog is not displayed. Only missing files are installed.
 	 */
-	public static boolean CheckMinJavaCV(String reqCompNames, String minVersion){
+	public static boolean checkMinJavaCV(String reqCompNames, String minVersion){
 		if (isInstalledVersionValid()){
 //			GenericVersionScheme gvs = new GenericVersionScheme();
 //			try {
@@ -1391,11 +1391,11 @@ public class JavaCV_Installer  implements PlugIn{
 //			}
 			if (new VerParser(minVersion).compareTo(new VerParser(installedJavaCVVersion))<=0){
 				if(showInfoMsg) log("Installed JavaCV version is acceptable");
-				return CheckJavaCV(reqCompNames);
+				return checkJavaCV(reqCompNames);
 			}
 		}
 		//log("The requested version is newer than installed");
-		return CheckJavaCV(reqCompNames, minVersion);
+		return checkJavaCV(reqCompNames, minVersion);
 		
 	}
 	
@@ -1406,7 +1406,7 @@ public class JavaCV_Installer  implements PlugIn{
 	 * Checks if all necessary dependencies are installed, 
 	 * prompts to install if missing.
 	 */
-	public static boolean CheckJavaCV(String reqCompNames, String reqVersion, boolean showOptDlg, boolean forceReinstall){
+	public static boolean checkJavaCV(String reqCompNames, String reqVersion, boolean showOptDlg, boolean forceReinstall){
 
 		String messageTitle = "JavaCV dependency check";
 		String autoInstallMsg = "Not all required JavaCV dependencies are installed.\nAuto-install?";
@@ -1487,7 +1487,7 @@ public class JavaCV_Installer  implements PlugIn{
 		//If macro is running check if the installed version meets the requested version
 		if(macroOptions!=null) {
 			boolean treatAsMinVer = macroOptions.indexOf(minVerLabel.toLowerCase(Locale.US))>-1;
-			if (!DoesInstalledVersionMeet(reqVersion, treatAsMinVer)) {
+			if (!doesInstalledVersionMeet(reqVersion, treatAsMinVer)) {
 				if (isInstalledVersionValid()) {
 					ConfirmDialog cd = new ConfirmDialog( messageTitle, "JavaCV version ("+reqVersion
 							+") is requested, which is different from the installed ("+installedJavaCVVersion+").\n"+
@@ -1629,7 +1629,7 @@ public class JavaCV_Installer  implements PlugIn{
 			
 		}
 
-		if (DoesInstalledVersionMeet(reqVersion, treatAsMinVer)) {
+		if (doesInstalledVersionMeet(reqVersion, treatAsMinVer)) {
 			if(showInfoMsg) log("The installed JavaCV version meets the minimum requirements");
 			reqVersion = installedJavaCVVersion;
 		}
@@ -1645,7 +1645,7 @@ public class JavaCV_Installer  implements PlugIn{
 
 		List<ArtifactResult> artifactResults = new ArrayList<ArtifactResult>();
 		try {
-			artifactResults = Resolve(reqVersion, reqComps);
+			artifactResults = resolveDependencies(reqVersion, reqComps);
 			if(artifactResults == null){
 				log("Dependencies are not resolved for some reason. The presence of the required files could not be verified.");
 				Prefs.set("javacv.install_result", "dependencies are not resolved");
@@ -1690,7 +1690,7 @@ public class JavaCV_Installer  implements PlugIn{
 				log(art);
 				Path artPath = Paths.get(art);
 				try {
-					if (!new JavaCVDependency(artPath.getFileName().toString(), artPath.getParent().toString()+File.separator, null).Remove()) {
+					if (!new JavaCVDependency(artPath.getFileName().toString(), artPath.getParent().toString()+File.separator, null).remove()) {
 						return false;
 					}
 				} catch (Exception e1) {
@@ -1739,7 +1739,7 @@ public class JavaCV_Installer  implements PlugIn{
 				}
 
 				try {
-					if (dep.Install()) {
+					if (dep.install()) {
 						installEvent = true;
 						log(dep.getName()+" will be installed to "+dep.getDirectory()); 
 					}
@@ -1782,7 +1782,7 @@ public class JavaCV_Installer  implements PlugIn{
 						for (Path path : dirStream){
 							if (IsFileConflicting(path, reqVersion)) {
 									conflictsFound = true;
-									new JavaCVDependency(path.getFileName().toString(), path.getParent().toString()+File.separator, null).Remove();
+									new JavaCVDependency(path.getFileName().toString(), path.getParent().toString()+File.separator, null).remove();
 									log("Conflicting file will be removed: "+path);
 							}
 													
