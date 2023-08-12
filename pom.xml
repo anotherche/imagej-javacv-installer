@@ -8,13 +8,13 @@
 	<parent>
 		<groupId>org.scijava</groupId>
 		<artifactId>pom-scijava</artifactId>
-		<version>29.2.1</version>
+		<version>36.0.0</version>
 	<relativePath />
 	</parent>
 
 	<groupId>anotherche.plugins.imagej</groupId> 
     <artifactId>JavaCV_Installer</artifactId>
-    <version>0.3.1</version>
+    <version>0.4.0</version>
 	
 	<name>ImageJ_JavaCV_Installer</name>
 	<url>http://imagej.net/PhotoBend</url>
@@ -89,7 +89,6 @@
 		<license.licenseName>gpl</license.licenseName>
 		<license.copyrightOwners>ISSCM SB RAS</license.copyrightOwners>
 
-		<scijava.app.subdirectory>plugins\JavaCV_Installer</scijava.app.subdirectory>
 	</properties>
 	
   <dependencies>
@@ -141,7 +140,6 @@
  		<plugin>
 	        <groupId>org.scijava</groupId>
 	        <artifactId>scijava-maven-plugin</artifactId>
-<!-- 	        <version>1.1.1</version> -->
 	        <executions>
 	          <execution>
 	            <id>populate-app</id>
@@ -150,22 +148,15 @@
 	              <goal>populate-app</goal>
 	            </goals>
 	            <configuration>
-	             
-	              
-<!-- 	              <deleteOtherVersionsPolicy>never</deleteOtherVersionsPolicy> -->
- 					
+	              <ignoreDependencies>true</ignoreDependencies>
+	              <deleteOtherVersionsPolicy>older</deleteOtherVersionsPolicy>
 	            </configuration>
 	          </execution>
-	          
-
-	          
-	          
 	        </executions>
 	        <configuration>
-<!-- 	          <deleteOtherVersionsPolicy>never</deleteOtherVersionsPolicy> -->
-				 
+	          <deleteOtherVersionsPolicy>older</deleteOtherVersionsPolicy>
 	        </configuration>
-	      	</plugin> 
+	      	</plugin>
 	     
 		
 			<plugin>

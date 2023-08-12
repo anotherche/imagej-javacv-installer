@@ -148,6 +148,7 @@ public class JavaCV_Installer  implements PlugIn{
 		repSession = Booter.newRepositorySystemSession( repSystem );
 		repSession.setConfigProperty( ConflictResolver.CONFIG_PROP_VERBOSE, true );
 		repSession.setConfigProperty( DependencyManagerUtils.CONFIG_PROP_VERBOSE, true );
+		repSession.setSystemProperty("javacpp.platform", platformSpecifier);
 		repList = Booter.newRepositories( repSystem, repSession );
 		compsByVer = new HashMap<String, List<JavaCVComponent>>();
 		installedComponents = new HashSet<String>();
@@ -952,7 +953,8 @@ public class JavaCV_Installer  implements PlugIn{
 //		else if(IJ.isMacOSX())
 //			platformSpecifier = MAC;
 
-		DependencyFilter filter = DependencyFilterUtils.andFilter(classpathFlter, inclusionFilter, exclusionFilter,  new ClassifierDependencyFilter(platformSpecifier), new DuplicateFilter());
+		//DependencyFilter filter = DependencyFilterUtils.andFilter(classpathFlter, inclusionFilter, exclusionFilter,  new ClassifierDependencyFilter(platformSpecifier), new DuplicateFilter());
+		DependencyFilter filter = DependencyFilterUtils.andFilter(classpathFlter, inclusionFilter, exclusionFilter, new DuplicateFilter());
 
 		CollectRequest collectRequest = new CollectRequest();
 		Artifact artifact = new DefaultArtifact( "org.bytedeco:javacv-platform:"+reqVersion );
@@ -980,7 +982,8 @@ public class JavaCV_Installer  implements PlugIn{
 				artifact = new DefaultArtifact( "org.bytedeco:ffmpeg-platform-gpl:"+ffmpegVersion );
 				collectRequest.setRoot( new Dependency( artifact, null));
 				collectRequest.setRepositories( repList );
-				DependencyFilter gplFilter = DependencyFilterUtils.andFilter(classpathFlter, inclusionFilter, new ClassifierDependencyFilter(platformSpecifier+"-gpl"), new DuplicateFilter());
+				//DependencyFilter gplFilter = DependencyFilterUtils.andFilter(classpathFlter, inclusionFilter, new ClassifierDependencyFilter(platformSpecifier+"-gpl"), new DuplicateFilter());
+				DependencyFilter gplFilter = DependencyFilterUtils.andFilter(classpathFlter, inclusionFilter, new DuplicateFilter());
 				dependencyRequest = new DependencyRequest( collectRequest, gplFilter );
 				depRes_gpl = repSystem.resolveDependencies( repSession, dependencyRequest );
 				if (showInfoMsg){
