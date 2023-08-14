@@ -945,14 +945,6 @@ public class JavaCV_Installer  implements PlugIn{
 
 		DependencyFilter classpathFlter = DependencyFilterUtils.classpathFilter( JavaScopes.COMPILE );
 
-//		String platformSpecifier = "";
-//		if(IJ.isLinux())
-//			platformSpecifier = IJ.is64Bit() ? LIN_64 : LIN_32;
-//		else if(IJ.isWindows())
-//			platformSpecifier = IJ.is64Bit() ? WIN_64 : WIN_32;
-//		else if(IJ.isMacOSX())
-//			platformSpecifier = MAC;
-
 		//DependencyFilter filter = DependencyFilterUtils.andFilter(classpathFlter, inclusionFilter, exclusionFilter,  new ClassifierDependencyFilter(platformSpecifier), new DuplicateFilter());
 		DependencyFilter filter = DependencyFilterUtils.andFilter(classpathFlter, inclusionFilter, exclusionFilter, new DuplicateFilter());
 
@@ -990,11 +982,7 @@ public class JavaCV_Installer  implements PlugIn{
 					if (depRes_gpl!=null) log("Optional ffmpeg-gpl dependencies are resolved");
 					else log("No optional gpl dependencies resolved");
 				}
-				
-//				for (int i=0;i<gplList.size();i++) {
-//					log(gplList.get(i).getArtifact().toString()+ " name "+gplList.get(i).getArtifact().getArtifactId()+" specifier "+gplList.get(i).getArtifact().getClassifier());
-//					
-//				}
+
 			} else if (showInfoMsg) log("ffmpeg version is not found");
 		}
 		List<ArtifactResult> gplList, depList;
