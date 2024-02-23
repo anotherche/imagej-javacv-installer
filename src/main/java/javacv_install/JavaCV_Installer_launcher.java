@@ -86,6 +86,8 @@ public class JavaCV_Installer_launcher implements PlugIn{
 
 	@Override
 	public void run(String arg) {
+		if (arg.equals("about"))
+		{showAbout(); return;}
 		
 		if(!IJ.isLinux() && !IJ.isWindows() && !IJ.isMacOSX()) {
 			IJ.showMessage(msgTitle, "Unsupported operating system");
@@ -167,6 +169,29 @@ public class JavaCV_Installer_launcher implements PlugIn{
 			}
 		}
 		
+	}
+	
+	public void showAbout() {
+		IJ.showMessage("JavaCV_Installer", 
+				"ImageJ plugin which helps to download and to install components of javacv\n"
+				+ "package (java interface to OpenCV, FFmpeg and other) by Samuel Audet.\n"
+				+ "     \n"
+				+ "Other plugins which require javacv may use it to check if necessary libraries\n"
+				+ "are installed and to install missing components of the required version.\n"
+				+ "     \n"
+				+ "The plugin creates a local repository in the directory \"local-maven-repo\"\n"
+				+ "under ImageJ path to store files of various versions downloaded from the\n"
+				+ "remote repository (a maven central). This allows to switch quickly between\n"
+				+ "different javacv releases. This repository can be deleted at any time\n"
+				+ "without consequences (next calls to the plugin will recreate the minimum\n"
+				+ "required local repository).\n"
+				+ "     \n"
+				+ "The plugin also provides a helper function to check/install required \n"
+				+ "parts of javacv from other user's plugins. \n"
+				+ "     \n"
+				+ "More information is available at \n"
+				+ "https://forum.image.sc/t/new-javacv-installer-plugin/55392  "
+			);
 	}
 	
 	public static boolean isRestartRequired() {

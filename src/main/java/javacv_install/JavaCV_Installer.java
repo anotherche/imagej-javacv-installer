@@ -35,6 +35,7 @@ import java.util.*;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import javax.xml.parsers.*;
@@ -211,13 +212,18 @@ public class JavaCV_Installer  implements PlugIn{
 	
 	static class JavaCVComponent {
 		private String name;
+		private String artifactName;
 		private String version;
-		public JavaCVComponent(String name, String version){
-			this.name = name;
+		public JavaCVComponent(String artifactName, String version){
+			this.artifactName = artifactName;
+			this.name = artifactName.replace("-platform", "");
 			this.version = version;
 		}
 		public String getName(){
 			return name;
+		}
+		public String getArtifactName(){
+			return artifactName;
 		}
 		public String getVersion(){
 			return version;
@@ -401,32 +407,6 @@ public class JavaCV_Installer  implements PlugIn{
 		log(message, false);
 	}
 
-
-
-
-
-	static class ClassifierDependencyFilter implements DependencyFilter {
-
-		private final String classifier;
-
-		public ClassifierDependencyFilter(final String classifier) {
-			this.classifier = classifier;
-		}
-
-		@Override
-		public boolean accept(final DependencyNode node, final List<DependencyNode> parents) {
-			String nodeClassifier = node.getArtifact().getClassifier(); 
-			return nodeClassifier.isEmpty() || classifier.equals(nodeClassifier);
-		}
-
-		@Override
-		public String toString() {
-			return "ClassifierDependencyFilter{" + "classifier=" + classifier + '}';
-		}
-
-
-	}
-
 	static class DuplicateFilter implements DependencyFilter {
 
 		private Set<String> included;
@@ -438,9 +418,9 @@ public class JavaCV_Installer  implements PlugIn{
 		@Override
 		public boolean accept(final DependencyNode node, final List<DependencyNode> parents) {
 			String artifactName = node.getArtifact().toString();
-			boolean newArtifac = !included.contains(artifactName);
-			if (newArtifac) included.add(artifactName);
-			return newArtifac;
+			boolean newArtifact = !included.contains(artifactName);
+			if (newArtifact) included.add(artifactName);
+			return newArtifact;
 		}
 
 		@Override
@@ -450,6 +430,24 @@ public class JavaCV_Installer  implements PlugIn{
 
 
 	}
+//	static class InfoFilter implements DependencyFilter {
+//
+//		public InfoFilter() {
+//		}
+//
+//		@Override
+//		public boolean accept(final DependencyNode node, final List<DependencyNode> parents) {
+//			String artifactName = node.getArtifact().toString();
+//			
+//			log("INFO FILTER|||"+artifactName+"|||"+parents.stream().map(DependencyNode::toString).collect(Collectors.toList()));
+//			return true;
+//		}
+//
+//		@Override
+//		public String toString() {
+//			return "infoFilter{artifact info}";
+//		}
+//	}
 
 
 
@@ -894,38 +892,35 @@ public class JavaCV_Installer  implements PlugIn{
 		if (reqComps == null) reqComps = new ArrayList<String>();
 
 		List<JavaCVComponent> allJavaCVComps = getComponentsByVer(reqVersion);
-		List<String> allComps = allJavaCVComps.stream().map(JavaCVComponent::getName).collect(Collectors.toList());	 
+		List<String> allComps = allJavaCVComps.stream().map(JavaCVComponent::getName).sorted().collect(Collectors.toList());	 
 
 		List<JavaCVComponent> reqJavaCVComps = new ArrayList<JavaCVComponent>();
 
 		// collect set of all requested components with their versions
 		for (JavaCVComponent comp : allJavaCVComps) 
-			if(reqComps.contains(comp.getName()))
-				reqJavaCVComps.add(comp);
-
+			if(reqComps.contains(comp.getName())) reqJavaCVComps.add(comp);
+		
 		// append all interdependencies
 		if (showInfoMsg) log("Checking interdependencies...");
-		//GenericVersionScheme gvs = new GenericVersionScheme();
-		//if (gvs.parseVersion(reqVersion).compareTo(gvs.parseVersion("1.4.4"))>0) {
 		if (new VerParser(reqVersion).compareTo(new VerParser("1.4.4"))>0 ) {
 			ArtifactDescriptorRequest dRequest = new ArtifactDescriptorRequest();
 			dRequest.setRepositories( Booter.newRepositories( repSystem, repSession ) );
 
 			for (int i = 0; i < reqJavaCVComps.size(); i++){
 				JavaCVComponent reqComp = reqJavaCVComps.get(i);
-				Artifact art = new DefaultArtifact(  "org.bytedeco:"+reqComp.getName()+"-platform:"+reqComp.getVersion());
+				Artifact art = new DefaultArtifact(  "org.bytedeco:"+reqComp.getArtifactName()+":"+reqComp.getVersion());
 				dRequest.setArtifact( art );
-				if (showInfoMsg) log(reqComp.getName()+"...", true);
+				if (showInfoMsg) log(art.toString()+"...", true);
 				ArtifactDescriptorResult descriptorResult = repSystem.readArtifactDescriptor( repSession, dRequest );
 				for ( Dependency dependency : descriptorResult.getDependencies() )
 				{
 					String artId =dependency.getArtifact().getArtifactId(); 
 					int suff = artId.indexOf("-platform");
 					if (suff!=-1) {
-						String compname = artId.substring(0, suff);
+						String compname = artId.replace("-platform", "");
 						if(allComps.contains(compname) && !reqComps.contains(compname)) {
 							reqComps.add(compname);
-							reqJavaCVComps.add(new JavaCVComponent(compname, dependency.getArtifact().getVersion()));
+							reqJavaCVComps.add(new JavaCVComponent(artId, dependency.getArtifact().getVersion()));
 							if (showInfoMsg) log(reqComp.getName()+" depends on "+compname);
 						}
 					}
@@ -933,34 +928,30 @@ public class JavaCV_Installer  implements PlugIn{
 			}
 		}
 		if (showInfoMsg) log("Final list of required components: "+reqComps);
-
-		//collect list of  excluded components 
+		
+		//set resolve filters
 		allComps.removeAll(reqComps);
-
 		Set<String> exclusions = new HashSet<>();
-		for(String comp : allComps) exclusions.add("*:"+comp+"*:*");
-
+		for(String comp : allComps) exclusions.add("*:"+comp+"*:");
 		PatternExclusionsDependencyFilter exclusionFilter = new PatternExclusionsDependencyFilter(exclusions);
 		PatternInclusionsDependencyFilter inclusionFilter = new PatternInclusionsDependencyFilter("*bytedeco*:*:*:*");
-
 		DependencyFilter classpathFlter = DependencyFilterUtils.classpathFilter( JavaScopes.COMPILE );
-
-		//DependencyFilter filter = DependencyFilterUtils.andFilter(classpathFlter, inclusionFilter, exclusionFilter,  new ClassifierDependencyFilter(platformSpecifier), new DuplicateFilter());
 		DependencyFilter filter = DependencyFilterUtils.andFilter(classpathFlter, inclusionFilter, exclusionFilter, new DuplicateFilter());
-
+		//set collect request
 		CollectRequest collectRequest = new CollectRequest();
 		Artifact artifact = new DefaultArtifact( "org.bytedeco:javacv-platform:"+reqVersion );
 		collectRequest.setRoot( new Dependency( artifact, JavaScopes.COMPILE));
 		collectRequest.setRepositories( repList );
-
 		DependencyRequest dependencyRequest = new DependencyRequest( collectRequest, filter );
-
+		//resolve!
 		if (showInfoMsg) log("Resolving dependencies...");
 		DependencyResult depRes = repSystem.resolveDependencies( repSession, dependencyRequest );
 		if (showInfoMsg && depRes!=null) log("Done");
+		List<ArtifactResult> gplList, depList;
+		depList = new ArrayList<>(new HashSet<>(depRes.getArtifactResults()));
 		
+		//check if ffmpeg-gpl can be used instead ffmpeg 
 		DependencyResult depRes_gpl=null;
-		//if (reqComps.contains("ffmpeg") && gvs.parseVersion(reqVersion).compareTo(gvs.parseVersion("1.5.4"))>0) {
 		if (reqComps.contains("ffmpeg") && new VerParser(reqVersion).compareTo(new VerParser("1.5.4"))>0) {
 			if (showInfoMsg) log("Resolving optional ffmpeg-gpl dependencies...");
 			String ffmpegVersion="";
@@ -974,27 +965,64 @@ public class JavaCV_Installer  implements PlugIn{
 				artifact = new DefaultArtifact( "org.bytedeco:ffmpeg-platform-gpl:"+ffmpegVersion );
 				collectRequest.setRoot( new Dependency( artifact, null));
 				collectRequest.setRepositories( repList );
-				//DependencyFilter gplFilter = DependencyFilterUtils.andFilter(classpathFlter, inclusionFilter, new ClassifierDependencyFilter(platformSpecifier+"-gpl"), new DuplicateFilter());
 				DependencyFilter gplFilter = DependencyFilterUtils.andFilter(classpathFlter, inclusionFilter, new DuplicateFilter());
 				dependencyRequest = new DependencyRequest( collectRequest, gplFilter );
 				depRes_gpl = repSystem.resolveDependencies( repSession, dependencyRequest );
-				if (showInfoMsg){
-					if (depRes_gpl!=null) log("Optional ffmpeg-gpl dependencies are resolved");
-					else log("No optional gpl dependencies resolved");
+				if (!depRes_gpl.getArtifactResults().isEmpty()) {
+					if (showInfoMsg) log("Optional ffmpeg-gpl dependencies are resolved");
+					Predicate<ArtifactResult> ffmpegPlatformGpl = x->x.getArtifact().getArtifactId().equals("ffmpeg-platform-gpl");
+				    Predicate<ArtifactResult> natLibGpl = x->x.getArtifact().getClassifier().equals(platformSpecifier+"-gpl");
+				    if (depRes_gpl.getArtifactResults().stream().anyMatch(ffmpegPlatformGpl) &&
+							depRes_gpl.getArtifactResults().stream().anyMatch(natLibGpl)) {
+						List<ArtifactResult> removesList= new ArrayList<ArtifactResult>();
+						for ( ArtifactResult artifactResult : depList ){
+							if (artifactResult.getArtifact().getArtifactId().equals("ffmpeg-platform") ||
+									artifactResult.getArtifact().getClassifier().equals(platformSpecifier)) {
+								removesList.add(artifactResult);
+							}
+						}
+						depList.removeAll(removesList);
+					}
 				}
-
+				else if (showInfoMsg) log("No optional gpl dependencies resolved");
 			} else if (showInfoMsg) log("ffmpeg version is not found");
 		}
-		List<ArtifactResult> gplList, depList;
-		if (depRes==null) return null;
-		depList = new ArrayList<>(new HashSet<>(depRes.getArtifactResults()));
+		
 		if (depRes_gpl!=null) {
 			gplList = new ArrayList<>(new HashSet<>(depRes_gpl.getArtifactResults()));
 			depList.addAll(gplList);
 		}
-		
-		
-		return	depList;
+		//check and remove duplicates and version conflicts
+		Map<String, ArtifactResult> mArtResults = new HashMap<String, ArtifactResult>();
+		for ( ArtifactResult artifactResult : depList){
+			Artifact art = artifactResult.getArtifact();
+			String artName = art.getArtifactId() + (!art.getClassifier().isEmpty()?"-"+art.getClassifier():"");
+			if (! mArtResults.containsKey(artName)) mArtResults.put(artName, artifactResult);
+			else {
+				String artVer = art.getVersion();
+				String artJavacvVer="", artCompVer="";
+				int dash = artVer.indexOf('-');
+				if(dash>-1) {
+					artJavacvVer = artVer.substring(dash+1);
+					artCompVer = artVer.substring(0, dash);
+				} else artJavacvVer = artVer;
+				Artifact selArt = mArtResults.get(artName).getArtifact(); 
+				String selArtVer = selArt.getVersion();
+				String selArtJavacvVer="", selArtCompVer="";
+				dash = selArtVer.indexOf('-');
+				if(dash>-1) {
+					selArtJavacvVer = selArtVer.substring(dash+1);
+					selArtCompVer = selArtVer.substring(0, dash);
+				} else selArtJavacvVer = selArtVer;
+				int verCompare = new VerParser(artJavacvVer).compareTo(new VerParser(selArtJavacvVer));
+				if (verCompare > 0) mArtResults.put(artName, artifactResult);
+				else if (verCompare == 0 && !selArtCompVer.isEmpty() && !artCompVer.isEmpty() &&
+						new VerParser(artCompVer).compareTo(new VerParser(selArtCompVer)) > 0)
+					mArtResults.put(artName, artifactResult);
+			}
+		}
+		List<ArtifactResult> resList= new ArrayList<ArtifactResult>(mArtResults.values());
+		return	resList;
 	}
 
 	static class JavaCVDependency {
@@ -1261,10 +1289,14 @@ public class JavaCV_Installer  implements PlugIn{
 			ArtifactDescriptorResult descriptorResult = repSystem.readArtifactDescriptor( repSession, descriptorRequest );
 			for ( Dependency dependency : descriptorResult.getDependencies() )
 			{
+				String scope = dependency.getScope();
+				if (!(scope.isEmpty() || scope.equalsIgnoreCase("compile"))) continue;
 				String aId =dependency.getArtifact().getArtifactId(); 
+				if (aId.equals("javacpp-platform")) continue;
 				int suff = aId.indexOf("-platform");
 				if (suff!=-1) {
-					result.add(new JavaCVComponent(aId.substring(0, suff), dependency.getArtifact().getVersion()));
+					//result.add(new JavaCVComponent(aId.substring(0, suff), dependency.getArtifact().getVersion()));
+					result.add(new JavaCVComponent(aId, dependency.getArtifact().getVersion()));
 				}
 			}
 			compsByVer.put(version, result);
@@ -1467,7 +1499,7 @@ public class JavaCV_Installer  implements PlugIn{
 		
 		List<String> optionalCompList = new ArrayList<String>();
 		try {
-			optionalCompList = getComponentsByVer(reqVersion).stream().map(JavaCVComponent::getName).collect(Collectors.toList());
+			optionalCompList = getComponentsByVer(reqVersion).stream().map(JavaCVComponent::getName).sorted().collect(Collectors.toList());
 		} catch (Exception e3) {
 			if(IJ.debugMode) { 
 				log(e3.getLocalizedMessage());
@@ -1555,7 +1587,7 @@ public class JavaCV_Installer  implements PlugIn{
 					String selectedVersion = versionChoice.getSelectedItem();
 					log("Requesting components avalable in version "+selectedVersion+"...",true);
 					try {
-						optionalCompNames = getComponentsByVer(selectedVersion).stream().map(JavaCVComponent::getName).collect(Collectors.toList()).toArray(new String[0]);
+						optionalCompNames = getComponentsByVer(selectedVersion).stream().map(JavaCVComponent::getName).sorted().collect(Collectors.toList()).toArray(new String[0]);
 					} catch (Exception e1) {
 						// TODO Auto-generated catch block
 						e1.printStackTrace();
@@ -1577,7 +1609,7 @@ public class JavaCV_Installer  implements PlugIn{
 			gd.addMessage("Select necessary packages");
 
 			try {
-				optionalCompNames = getComponentsByVer( versionChoice.getSelectedItem()).stream().map(JavaCVComponent::getName).collect(Collectors.toList()).toArray(new String[0]);
+				optionalCompNames = getComponentsByVer( versionChoice.getSelectedItem()).stream().map(JavaCVComponent::getName).sorted().collect(Collectors.toList()).toArray(new String[0]);
 			} catch (Exception e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
@@ -1652,11 +1684,12 @@ public class JavaCV_Installer  implements PlugIn{
 		if (showInfoMsg) log("Resolved dependencies:");
 		dependencies = new ArrayList<JavaCVDependency>();
 		for ( ArtifactResult artifactResult : artifactResults ){
-			String srcPath = artifactResult.getArtifact().getFile().getPath();
-			String fileName = artifactResult.getArtifact().getFile().getName();
-			String dstDir = artifactResult.getArtifact().getClassifier().isEmpty()?depsPath:natLibsPath;
+			Artifact artifact = artifactResult.getArtifact();
+			String srcPath = artifact.getFile().getPath();
+			String fileName = artifact.getFile().getName();
+			String dstDir = artifact.getClassifier().isEmpty()?depsPath:natLibsPath;
 			dependencies.add(new JavaCVDependency(fileName, dstDir, srcPath));
-			if (showInfoMsg) log(artifactResult.getArtifact().toString() + " resolved to " + srcPath);
+			if (showInfoMsg) log(artifact.toString() + " resolved to " + srcPath);
 		}
 		if (showInfoMsg) log(" ");
 
@@ -1753,14 +1786,11 @@ public class JavaCV_Installer  implements PlugIn{
 		////Try to cleanup conflicts and previous incorrect installations 
 		boolean conflictsFound = false;
 		try {
-			
-			//String platformName = platformSpecifier.substring(0, platformSpecifier.indexOf("-"));
-			//GenericVersionScheme gvs = new GenericVersionScheme();
 			if (showInfoMsg) {
 				log(" ");
 				log("Searching for possible conflicts...");
 			}
-			List<String> allComps = getComponentsByVer(reqVersion).stream().map(x->x.name).collect(Collectors.toList());
+			List<String> allComps = getComponentsByVer(reqVersion).stream().map(x->x.name).sorted().collect(Collectors.toList());
 			allComps.add("javacv");
 			allComps.add("javacpp");
 			Set<String> checkDirs = new HashSet<String>();
@@ -1821,16 +1851,3 @@ public class JavaCV_Installer  implements PlugIn{
 	}
 
 }
-
-//interface JavaCVInstallerInterface extends PlugIn {
-//	//abstract public void run(String arg);
-//	public boolean CheckJavaCV(String comps, String ver, boolean dial, boolean force);
-//	public boolean CheckMinJavaCV(String comps, String ver);
-//	public String getInstallerVersion();
-//	public String getInstalledJavaCVVersion();
-//	public String getNewestJavaCVVersion()  throws Exception;
-//	public List<String> getInstalledJavaCVComponents();
-//	public boolean isRestartRequired();
-//}
-
-
