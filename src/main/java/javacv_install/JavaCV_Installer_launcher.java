@@ -356,7 +356,7 @@ public class JavaCV_Installer_launcher implements PlugIn{
 	        if(version == null)
 	            throw new IllegalArgumentException("Version can not be null");
 	        if(!version.matches("[0-9]+(\\.[0-9]+)*"))
-	            throw new IllegalArgumentException("Invalid version format");
+	            throw new IllegalArgumentException("Invalid version format: "+ version);
 	        this.version = version;
 	    }
 

@@ -977,7 +977,8 @@ public class JavaCV_Installer  implements PlugIn{
 						List<ArtifactResult> removesList= new ArrayList<ArtifactResult>();
 						for ( ArtifactResult artifactResult : depList ){
 							if (artifactResult.getArtifact().getArtifactId().equals("ffmpeg-platform") ||
-									artifactResult.getArtifact().getClassifier().equals(platformSpecifier)) {
+									(artifactResult.getArtifact().getArtifactId().equals("ffmpeg") && 
+											artifactResult.getArtifact().getClassifier().equals(platformSpecifier))) {
 								removesList.add(artifactResult);
 							}
 						}
