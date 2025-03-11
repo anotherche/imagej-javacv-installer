@@ -1,29 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-		http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
 		<groupId>org.scijava</groupId>
 		<artifactId>pom-scijava</artifactId>
 		<version>36.0.0</version>
-	<relativePath />
+		<relativePath />
 	</parent>
 
-	<groupId>anotherche.plugins.imagej</groupId> 
-    <artifactId>JavaCV_Installer</artifactId>
-    <version>0.5.0</version>
-	
+	<groupId>anotherche.plugins.imagej</groupId>
+	<artifactId>JavaCV_Installer</artifactId>
+	<version>0.6.0</version>
+
 	<name>ImageJ_JavaCV_Installer</name>
 	<url>http://imagej.net/PhotoBend</url>
 	<inceptionYear>2020</inceptionYear>
-	 <organization>
-        <name>ISSCM SB RAS</name>
-        <url>http://www.solid.nsc.ru/</url>
+	<organization>
+		<name>ISSCM SB RAS</name>
+		<url>http://www.solid.nsc.ru/</url>
 	</organization>
-	
+
 	<licenses>
 		<license>
 			<name>GNU General Public License</name>
@@ -31,159 +30,195 @@
 			<distribution>repo</distribution>
 		</license>
 	</licenses>
-	
+
 	<repositories>
- 	 <!-- NB: for project parent -->
-  		<repository>
-   		 <id>imagej.public</id>
-  		  <url>http://maven.imagej.net/content/groups/public</url>
-  		</repository>
+		<!-- NB: for project parent -->
+		<repository>
+			<id>imagej.public</id>
+			<url>http://maven.imagej.net/content/groups/public</url>
+		</repository>
 	</repositories>
 
 	<mailingLists>
-        <mailingList>
-            <name>ImageJ Forum</name>
-            <archive>http://forum.imagej.net/</archive>
-        </mailingList>
+		<mailingList>
+			<name>ImageJ Forum</name>
+			<archive>http://forum.imagej.net/</archive>
+		</mailingList>
 	</mailingLists>
-	
+
 	<issueManagement>
-        <system>GitHub Issues</system>
-        <url>https://github.com/anotherche/imagej-javacv-installer/issues</url>
-    </issueManagement>
-    <ciManagement>
-        <system>None</system>
+		<system>GitHub Issues</system>
+		<url>https://github.com/anotherche/imagej-javacv-installer/issues</url>
+	</issueManagement>
+	<ciManagement>
+		<system>None</system>
 	</ciManagement>
-	
+
 	<scm>
-		<connection>scm:git:git://github.com/anotherche/imagej-javacv-installer.git</connection>
-		<developerConnection>scm:git:git://github.com/anotherche/imagej-javacv-installer.git</developerConnection>
+		<connection>
+			scm:git:git://github.com/anotherche/imagej-javacv-installer.git</connection>
+		<developerConnection>
+			scm:git:git://github.com/anotherche/imagej-javacv-installer.git</developerConnection>
 		<tag>HEAD</tag>
 		<url>https://github.com/anotherche/imagej-javacv-installer</url>
 	</scm>
-	
+
 	<developers>
-        <developer>
-            <id>anotherche</id>
-            <name>Stanislav Chizhik</name>
-            <url>http://www.solid.nsc.ru/</url>
-            <roles>
-                <role>lead</role>
-                <role>developer</role>
-                <role>debugger</role>
-                <role>reviewer</role>
-                <role>support</role>
-                <role>maintainer</role>
-            </roles>
-        </developer>
+		<developer>
+			<id>anotherche</id>
+			<name>Stanislav Chizhik</name>
+			<url>http://www.solid.nsc.ru/</url>
+			<roles>
+				<role>lead</role>
+				<role>developer</role>
+				<role>debugger</role>
+				<role>reviewer</role>
+				<role>support</role>
+				<role>maintainer</role>
+			</roles>
+		</developer>
 	</developers>
-	
+
 	<contributors>
 		<contributor>
-            <name>Stanislav Chizhik</name>
-	</contributor>
+			<name>Stanislav Chizhik</name>
+		</contributor>
 	</contributors>
-	
+
 	<properties>
 		<package-name>javacv_install</package-name>
 		<license.licenseName>gpl</license.licenseName>
 		<license.copyrightOwners>ISSCM SB RAS</license.copyrightOwners>
 
 	</properties>
-	
-  <dependencies>
-  <dependency>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.apache.maven.resolver</groupId>
+				<artifactId>maven-resolver-api</artifactId>
+				<version>2.0.7</version>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.maven.resolver</groupId>
+				<artifactId>maven-resolver-spi</artifactId>
+				<version>2.0.7</version>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.maven.resolver</groupId>
+				<artifactId>maven-resolver-util</artifactId>
+				<version>2.0.7</version>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.maven.resolver</groupId>
+				<artifactId>maven-resolver-impl</artifactId>
+				<version>2.0.7</version>
+			</dependency>
+			<dependency>
+				<groupId>org.codehaus.plexus</groupId>
+				<artifactId>plexus-utils</artifactId>
+				<version>4.0.2</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<dependencies>
+		<dependency>
 			<groupId>net.imagej</groupId>
 			<artifactId>ij</artifactId>
 		</dependency>
-  <dependency>
-  	<groupId>org.apache.maven.resolver</groupId>
-  	<artifactId>maven-resolver-connector-basic</artifactId>
-  	<version>1.6.1</version>
-  </dependency>
-  <dependency>
-  	<groupId>org.apache.maven</groupId>
-  	<artifactId>maven-resolver-provider</artifactId>
-  	<version>3.6.3</version>
-  </dependency>
-  <dependency>
-  	<groupId>org.apache.maven.resolver</groupId>
-  	<artifactId>maven-resolver-util</artifactId>
-  	<version>1.6.1</version>
-  </dependency>
-  <dependency>
-  	<groupId>org.apache.maven.resolver</groupId>
-  	<artifactId>maven-resolver-api</artifactId>
-  	<version>1.6.1</version>
-  </dependency>
-  <dependency>
-  	<groupId>org.apache.maven.resolver</groupId>
-  	<artifactId>maven-resolver-spi</artifactId>
-  	<version>1.6.1</version>
-  </dependency>
-  <dependency>
-  	<groupId>org.apache.maven.resolver</groupId>
-  	<artifactId>maven-resolver-transport-file</artifactId>
-  	<version>1.1.0</version>
-  </dependency>
-  <dependency>
-  	<groupId>org.apache.maven.resolver</groupId>
-  	<artifactId>maven-resolver-transport-http</artifactId>
-  	<version>1.1.0</version>
-  </dependency>
-  </dependencies>
-  
-  <build>
-    <plugins>
+		<dependency>
+			<groupId>org.apache.maven.resolver</groupId>
+			<artifactId>maven-resolver-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.maven.resolver</groupId>
+			<artifactId>maven-resolver-spi</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.maven.resolver</groupId>
+			<artifactId>maven-resolver-util</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.maven.resolver</groupId>
+			<artifactId>maven-resolver-impl</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.maven.resolver</groupId>
+			<artifactId>maven-resolver-connector-basic</artifactId>
+			<version>2.0.7</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.maven.resolver</groupId>
+			<artifactId>maven-resolver-transport-file</artifactId>
+			<version>2.0.7</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.maven.resolver</groupId>
+			<artifactId>maven-resolver-transport-apache</artifactId>
+			<version>2.0.7</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.maven.resolver</groupId>
+			<artifactId>maven-resolver-supplier-mvn3</artifactId>
+			<version>2.0.7</version>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
 			<plugin>
-	        <groupId>org.scijava</groupId>
-	        <artifactId>scijava-maven-plugin</artifactId>
-	        <executions>
-	          <execution>
-	            <id>populate-app</id>
-	            <phase>install</phase>
-	            <goals>
-	              <goal>populate-app</goal>
-	            </goals>
-	            <configuration>
-	              <ignoreDependencies>true</ignoreDependencies>
-	              <deleteOtherVersionsPolicy>older</deleteOtherVersionsPolicy>
-	            </configuration>
-	          </execution>
-	        </executions>
-	        <configuration>
-	          <deleteOtherVersionsPolicy>older</deleteOtherVersionsPolicy>
-	        </configuration>
-	      	</plugin>
+				<groupId>org.scijava</groupId>
+				<artifactId>scijava-maven-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>populate-app</id>
+						<phase>install</phase>
+						<goals>
+							<goal>populate-app</goal>
+						</goals>
+						<configuration>
+							<ignoreDependencies>true</ignoreDependencies>
+							<deleteOtherVersionsPolicy>older</deleteOtherVersionsPolicy>
+						</configuration>
+					</execution>
+				</executions>
+				<configuration>
+					<deleteOtherVersionsPolicy>older</deleteOtherVersionsPolicy>
+				</configuration>
+			</plugin>
 			<plugin>
-		        <groupId>org.codehaus.mojo</groupId>
-		        <artifactId>buildnumber-maven-plugin</artifactId>
-		        <executions>
-		          <execution>
-		          	<id>useLastCommittedRevision</id>
-		            <phase>validate</phase>
-		            <goals>
-		              <goal>create</goal>
-		            </goals>
-		          </execution>
-		        </executions>
-		        <configuration>
-		           <doCheck>true</doCheck> 
-		          	<doUpdate>true</doUpdate>
-		          	<format>{0,date,yyyy/MM/dd}</format>
-      				<items>
-        				<item>timestamp</item>
-      				</items>
-		        </configuration>
-      		</plugin>
-    	</plugins>
-    	<resources>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>buildnumber-maven-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>useLastCommittedRevision</id>
+						<phase>validate</phase>
+						<goals>
+							<goal>create</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<doCheck>true</doCheck>
+					<doUpdate>true</doUpdate>
+					<format>{0,date,yyyy/MM/dd}</format>
+					<items>
+						<item>timestamp</item>
+					</items>
+				</configuration>
+			</plugin>
+		</plugins>
+		<resources>
 			<resource>
-	        	<directory>src/main/resources</directory>
-	        	<filtering>true</filtering>
-	     	</resource>
-     	</resources>
+				<directory>src/main/resources</directory>
+				<filtering>true</filtering>
+			</resource>
+		</resources>
 	</build>
-	<description>ImageJ plugin which helps to download and to install components of javacv package (java interface to OpenCV, FFmpeg and other) by Samuel Audet.
-Other plugins which require javacv may use it to check if necessary libraries are installed and to install missing components.</description>
+	<description>ImageJ plugin which helps to download and to install components
+		of javacv package (java interface to OpenCV, FFmpeg and other) by Samuel
+		Audet.
+		Other plugins which require javacv may use it to check if necessary
+		libraries are installed and to install missing components.</description>
 </project>
