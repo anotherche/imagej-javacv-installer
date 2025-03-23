@@ -297,7 +297,7 @@ public class JavaCV_Installer_launcher implements PlugIn {
 		public VerParser(String version) {
 			if (version == null)
 				throw new IllegalArgumentException("Version can not be null");
-			if (!version.matches("[0-9]+(\\.[0-9]+)*"))
+			if (!version.matches("^(\\d+)(\\.\\d+)*(-((\\d+)(\\.\\d+)*))*$"))
 				throw new IllegalArgumentException("Invalid version format: " + version);
 			this.version = version;
 		}
@@ -306,8 +306,8 @@ public class JavaCV_Installer_launcher implements PlugIn {
 		public int compareTo(VerParser that) {
 			if (that == null)
 				return 1;
-			String[] thisParts = this.get().split("\\.");
-			String[] thatParts = that.get().split("\\.");
+			String[] thisParts = this.get().split("[.-]");
+			String[] thatParts = that.get().split("[.-]");
 			int length = Math.max(thisParts.length, thatParts.length);
 			for (int i = 0; i < length; i++) {
 				int thisPart = i < thisParts.length ? Integer.parseInt(thisParts[i]) : 0;
@@ -353,17 +353,24 @@ public class JavaCV_Installer_launcher implements PlugIn {
 	}
 
 	static String getJarVersion(String name) {
+		int dirIndex = name.lastIndexOf('/');
+		if(dirIndex > -1) name = name.substring(dirIndex + 1);
+		dirIndex = name.lastIndexOf('\\');
+		if(dirIndex > -1) name = name.substring(dirIndex + 1);
+		int Dash = name.indexOf("-");
+		if (Dash > -1) name = name.substring(Dash + 1);
 		String ver = name.replaceAll(".jar", "").replaceAll("[a-zA-Z]", "");
 		while (ver.startsWith("-"))
 			ver = ver.substring(1);
 		while (ver.endsWith("-"))
 			ver = ver.substring(0, ver.length() - 1);
-		int Dash = ver.indexOf("--");
+		Dash = ver.indexOf("--");
 		if (Dash > -1)
 			ver = ver.substring(0, Dash);
-		Dash = ver.indexOf("-");
-		if (Dash > -1)
-			ver = ver.substring(Dash + 1);
+		//commented out to get full version string
+//		Dash = ver.indexOf("-");
+//		if (Dash > -1)
+//			ver = ver.substring(Dash + 1);
 		return ver;
 	}
 

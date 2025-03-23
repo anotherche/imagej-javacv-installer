@@ -14,6 +14,7 @@ import ij.Prefs;
 import ij.plugin.PlugIn;
 import ij.plugin.frame.Recorder;
 import ij.gui.*;
+//import net.imagej.ui.swing.updater;
 
 import java.awt.BorderLayout;
 import java.awt.Button;
@@ -31,11 +32,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -44,45 +40,13 @@ import javax.xml.transform.*;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
-//import org.eclipse.aether.*;
-//import org.eclipse.aether.collection.CollectRequest;
-//import org.eclipse.aether.connector.basic.BasicRepositoryConnectorFactory;
-//import org.eclipse.aether.artifact.*;
-//import org.eclipse.aether.graph.*;
-//import org.eclipse.aether.resolution.*;
-//import org.eclipse.aether.transfer.*;
-//import org.eclipse.aether.impl.DefaultServiceLocator;
-//import org.eclipse.aether.repository.LocalRepository;
-//import org.eclipse.aether.repository.RemoteRepository;
-//import org.eclipse.aether.spi.connector.RepositoryConnectorFactory;
-//import org.eclipse.aether.spi.connector.transport.TransporterFactory;
-//import org.eclipse.aether.transport.file.FileTransporterFactory;
-//import org.eclipse.aether.transport.http.HttpTransporterFactory;
-//import org.eclipse.aether.util.artifact.JavaScopes;
-//import org.eclipse.aether.util.filter.DependencyFilterUtils;
-//import org.eclipse.aether.util.filter.PatternExclusionsDependencyFilter;
-//import org.eclipse.aether.util.filter.PatternInclusionsDependencyFilter;
-//import org.eclipse.aether.util.graph.manager.DependencyManagerUtils;
-//import org.eclipse.aether.util.graph.transformer.ConflictResolver;
-//
-//import org.eclipse.aether.version.Version;
-
-import org.eclipse.aether.AbstractRepositoryListener;
-import org.eclipse.aether.RepositoryEvent;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession.CloseableSession;
-import org.eclipse.aether.RepositorySystemSession.SessionBuilder;
 import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
 import org.eclipse.aether.collection.CollectRequest;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.resolution.*;
-import org.eclipse.aether.supplier.RepositorySystemSupplier;
-import org.eclipse.aether.supplier.SessionBuilderSupplier;
-import org.eclipse.aether.transfer.AbstractTransferListener;
-import org.eclipse.aether.transfer.MetadataNotFoundException;
-import org.eclipse.aether.transfer.TransferEvent;
-import org.eclipse.aether.transfer.TransferResource;
 import org.eclipse.aether.util.filter.DependencyFilterUtils;
 import org.eclipse.aether.util.filter.PatternExclusionsDependencyFilter;
 import org.eclipse.aether.util.filter.PatternInclusionsDependencyFilter;
@@ -108,7 +72,6 @@ public class JavaCV_Installer implements PlugIn {
 	private static String[] optionalCompNames;
 	private static boolean[] compSelection;
 	private static int compsPannelInd;
-	private static boolean updateLine;
 	private static boolean showInfoMsg;
 	private static String installedJavaCVVersion;
 	private static Set<String> installedComponents;
@@ -125,16 +88,10 @@ public class JavaCV_Installer implements PlugIn {
 
 	// Installation constants
 
-	private static final String INSTALLER_VERSION = "0.6.0";
+	private static final String INSTALLER_VERSION = "0.6.1";
 	private static final String IMAGEJ_NAME = "imagej";
 	private static final String PLATFORM_SUFFIX = "-platform";
 	private static final String DIALOG_TITLE = "JavaCV installation";
-
-	/** Base URL to the maven repository */
-	private static final String BASE_REPO = "https://repo1.maven.org/maven2/"; // "https://repo.maven.apache.org/maven2/"
-
-	/** Local maven repository path */
-	private static final String LOCAL_REPO = "local-maven-repo";
 
 	/** Platform specifier for the 32-bit windows */
 	private static final String WIN_32 = "windows-x86";
@@ -167,12 +124,14 @@ public class JavaCV_Installer implements PlugIn {
 		else if (IJ.isMacOSX())
 			platformSpecifier = isarm ? MAC_ARM : MAC;
 		repSystem = Booter.newRepositorySystem();
-		repSession = Booter.newRepositorySystemSession(repSystem).build();
+		repSession = Booter.newRepositorySystemSession(repSystem)
+				.setConfigProperty(ConflictResolver.CONFIG_PROP_VERBOSE, true)
+                .setConfigProperty(DependencyManagerUtils.CONFIG_PROP_VERBOSE, true)
+                .setSystemProperty("javacpp.platform", platformSpecifier).build();
 		repList = Booter.newRepositories();
 		compsByVer = new HashMap<>();
 		installedComponents = new HashSet<>();
 		installedArtifacts = new HashSet<>();
-		updateLine = false;
 		showInfoMsg = false;
 		restartRequired = false;
 		compsPannelInd = -1;
@@ -191,10 +150,10 @@ public class JavaCV_Installer implements PlugIn {
 		try {
 			readInstallCfg();
 		} catch (SAXException | IOException | ParserConfigurationException e1) {
-			log("Installation configuration is missing or incorrect");
+			IJLog.log("Installation configuration is missing or incorrect");
 			if (IJ.debugMode) {
-				log(e1.getLocalizedMessage());
-				log(e1.toString());
+				IJLog.log(e1.getLocalizedMessage());
+				IJLog.log(e1.toString());
 			}
 		}
 
@@ -234,11 +193,11 @@ public class JavaCV_Installer implements PlugIn {
 
 //	public static void main(String[] args) {
 //		if(CheckJavaCV(null, null, true, false)){
-//			log("javacv is installed");
+//			IJLog.log("javacv is installed");
 //		}
 //
 //		else
-//			log("javacv install failed or canceled");
+//			IJLog.log("javacv install failed or canceled");
 //
 //	}
 
@@ -270,12 +229,12 @@ public class JavaCV_Installer implements PlugIn {
 		if (split == null) {
 			if (checkJavaCV(null, null, true, false)) {
 				if (Macro.getOptions() == null) {
-					log("javacv is installed");
+					IJLog.log("javacv is installed");
 					IJ.log("---------------------------------------------");
 				}
 
 			} else
-				log("javacv install failed or canceled");
+				IJLog.log("javacv install failed or canceled");
 		} else {
 			String version = "";
 			String components = "";
@@ -293,19 +252,19 @@ public class JavaCV_Installer implements PlugIn {
 				}
 			if (checkJavaCV(components, version, !beQuiet, force)) {
 				if (Macro.getOptions() == null) {
-					log("javacv is installed");
+					IJLog.log("javacv is installed");
 					IJ.log("---------------------------------------------");
 				}
 
 			} else
-				log("javacv install failed or canceled");
+				IJLog.log("javacv install failed or canceled");
 		}
 	}
 
 	private static void readInstallCfg() throws SAXException, IOException, ParserConfigurationException {
 
 		File xmlFile = new File(installerDirectory + "installcfg.xml");
-//		IJ.log("xmlFile: "+xmlFile.getPath());
+//		IJ.IJLog.log("xmlFile: "+xmlFile.getPath());
 		if (!xmlFile.exists())
 			return;
 
@@ -318,7 +277,7 @@ public class JavaCV_Installer implements PlugIn {
 		Node nVer = doc.getElementsByTagName("version").item(0);
 		if (nVer == null || nVer.getTextContent().isEmpty()
 				|| (versions != null && !versions.contains(nVer.getTextContent()))) {
-			log("Incorrect install config file. Ignoring.");
+			IJLog.log("Incorrect install config file. Ignoring.");
 			return;
 		}
 
@@ -393,7 +352,7 @@ public class JavaCV_Installer implements PlugIn {
 
 		JavaCV_Installer_launcher.checkCreateDirectory(installerDirectory);
 		File xmlFile = new File(installerDirectory + "installcfg.xml");
-//		IJ.log("xmlFile: "+xmlFile.getPath());
+//		IJ.IJLog.log("xmlFile: "+xmlFile.getPath());
 
 		StreamResult file = new StreamResult(xmlFile.toURI().getPath());
 
@@ -401,14 +360,7 @@ public class JavaCV_Installer implements PlugIn {
 
 	}
 
-	private static void log(String message, boolean setUpdate) {
-		IJ.log((updateLine ? "\\Update:" : "") + message);
-		updateLine = setUpdate;
-	}
-
-	private static void log(String message) {
-		log(message, false);
-	}
+	
 
 	static class DuplicateFilter implements DependencyFilter {
 
@@ -433,383 +385,7 @@ public class JavaCV_Installer implements PlugIn {
 		}
 
 	}
-//	static class InfoFilter implements DependencyFilter {
-//
-//		public InfoFilter() {
-//		}
-//
-//		@Override
-//		public boolean accept(final DependencyNode node, final List<DependencyNode> parents) {
-//			String artifactName = node.getArtifact().toString();
-//			
-//			log("INFO FILTER|||"+artifactName+"|||"+parents.stream().map(DependencyNode::toString).collect(Collectors.toList()));
-//			return true;
-//		}
-//
-//		@Override
-//		public String toString() {
-//			return "infoFilter{artifact info}";
-//		}
-//	}
 
-	/**
-	 * A simplistic repository listener that logs events to the console.
-	 */
-	static class ConsoleRepositoryListener extends AbstractRepositoryListener {
-
-		@Override
-		public void artifactDescriptorInvalid(RepositoryEvent event) {
-			log("Invalid artifact descriptor for " + event.getArtifact() + ": " + event.getException().getMessage());
-		}
-
-		@Override
-		public void artifactDescriptorMissing(RepositoryEvent event) {
-			log("Missing artifact descriptor for " + event.getArtifact());
-		}
-
-		// public void artifactInstalled( RepositoryEvent event )
-		// {
-		// out.println( "Installed " + event.getArtifact() + " to " + event.getFile() );
-		// }
-		//
-		// public void artifactInstalling( RepositoryEvent event )
-		// {
-		// out.println( "Installing " + event.getArtifact() + " to " + event.getFile()
-		// );
-		// }
-
-		// public void artifactResolved( RepositoryEvent event )
-		// {
-		// IJ.log( "Resolved artifact " + event.getArtifact() + " from " +
-		// event.getRepository() );
-		// }
-		//
-		// public void artifactDownloading( RepositoryEvent event )
-		// {
-		// IJ.log( "Downloading artifact " + event.getArtifact() + " from " +
-		// event.getRepository() );
-		// }
-
-		// public void artifactDownloaded( RepositoryEvent event )
-		// {
-		// if (event.getArtifact().getExtension()=="jar")
-		// IJ.log( "Downloaded artifact " + event.getArtifact() + " from " +
-		// event.getRepository() );
-		// }
-
-		// public void artifactResolving( RepositoryEvent event )
-		// {
-		// IJ.log( "Resolving artifact " + event.getArtifact() );
-		// }
-
-		// public void metadataDeployed( RepositoryEvent event )
-		// {
-		// out.println( "Deployed " + event.getMetadata() + " to " +
-		// event.getRepository() );
-		// }
-		//
-		// public void metadataDeploying( RepositoryEvent event )
-		// {
-		// out.println( "Deploying " + event.getMetadata() + " to " +
-		// event.getRepository() );
-		// }
-		//
-		// public void metadataInstalled( RepositoryEvent event )
-		// {
-		// out.println( "Installed " + event.getMetadata() + " to " + event.getFile() );
-		// }
-		//
-		// public void metadataInstalling( RepositoryEvent event )
-		// {
-		// out.println( "Installing " + event.getMetadata() + " to " + event.getFile()
-		// );
-		// }
-		//
-		// public void metadataInvalid( RepositoryEvent event )
-		// {
-		// out.println( "Invalid metadata " + event.getMetadata() );
-		// }
-		//
-		// public void metadataResolved( RepositoryEvent event )
-		// {
-		// out.println( "Resolved metadata " + event.getMetadata() + " from " +
-		// event.getRepository() );
-		// }
-		//
-		// public void metadataResolving( RepositoryEvent event )
-		// {
-		// out.println( "Resolving metadata " + event.getMetadata() + " from " +
-		// event.getRepository() );
-		// }
-
-	}
-
-	/**
-	 * A simplistic transfer listener that logs uploads/downloads to the console.
-	 */
-	static class ConsoleTransferListener extends AbstractTransferListener {
-
-		// private PrintStream out;
-
-		private Map<TransferResource, Long> downloads = new ConcurrentHashMap<>();
-
-		private int lastLength;
-		private long lastProcentage = -1L;
-		private long lastTotal;
-
-		@Override
-		public void transferInitiated(TransferEvent event) {
-			// String message = updateLine?"\\Update:":"";
-
-			String message = event.getRequestType() == TransferEvent.RequestType.PUT ? "Uploading"
-					: "Downloading" + ": " + event.getResource().getRepositoryUrl()
-							+ event.getResource().getResourceName();
-//			if(!trInit) {
-//				log("Downloading information required to verify JavaCV dependencies...");
-//				trInit = true;
-//			}
-
-			if (!event.getResource().getResourceName().endsWith(".xml"))
-				log(message, event.getResource().getResourceName().indexOf(".jar") == -1);
-
-			// updateLine = event.getResource().getResourceName().indexOf(".jar")==-1;
-			// if (event.getResource().getResourceName().indexOf(".jar")!=-1) {
-			// updateLine = false;
-			// } else {
-			// updateLine = true;
-			// }
-		}
-
-		@Override
-		public void transferProgressed(TransferEvent event) {
-			if (event.getResource().getResourceName().indexOf(".jar") != -1) {
-				TransferResource resource = event.getResource();
-				// if (resource.getContentLength() > 1024*1024)
-				downloads.put(resource, event.getTransferredBytes());
-
-				StringBuilder buffer = new StringBuilder(64);
-				long maxtotal = 0;
-				long maxtotcompl = 0;
-				for (Map.Entry<TransferResource, Long> entry : downloads.entrySet()) {
-					long total = entry.getKey().getContentLength();
-					long complete = entry.getValue();
-					if (total > maxtotal) {
-						maxtotal = total;
-						maxtotcompl = complete;
-					}
-					buffer.append(getStatus(complete, total)).append("  ");
-				}
-
-				int pad = lastLength - buffer.length();
-				lastLength = buffer.length();
-				pad(buffer, pad);
-				// buffer.append( '\r' );
-				long procentage = Math.round(Math.floor(maxtotal > 0 ? 100.0 * maxtotcompl / maxtotal : 0));
-				if ((lastProcentage != procentage || lastTotal != maxtotal) && procentage % 10L == 0L) {
-					String strBuff = buffer.toString().trim();
-					if (!strBuff.isEmpty()) {
-						log(strBuff, true);
-						// updateLine = true;
-					}
-
-					// String strBuff = buffer.toString().trim();
-					// if (!strBuff.isEmpty()) IJ.log( buffer.toString() );//(
-					// "\\Update:"+buffer.toString() );
-				}
-				lastProcentage = procentage;
-				lastTotal = maxtotal;
-
-			}
-		}
-
-		private String getStatus(long complete, long total) {
-			if (total >= 1024) {
-				return toKB(complete) + "/" + toKB(total) + " KB ";
-			} else if (total >= 0) {
-				return complete + "/" + total + " B ";
-			} else if (complete >= 1024) {
-				return toKB(complete) + " KB ";
-			} else {
-				return complete + " B ";
-			}
-		}
-
-		private void pad(StringBuilder buffer, int spaces) {
-			String block = "                                        ";
-			while (spaces > 0) {
-				int n = Math.min(spaces, block.length());
-				buffer.append(block, 0, n);
-				spaces -= n;
-			}
-		}
-
-		@Override
-		public void transferSucceeded(TransferEvent event) {
-			if (event.getResource().getResourceName().indexOf(".jar") != -1) {
-				transferCompleted(event);
-
-				TransferResource resource = event.getResource();
-				long contentLength = event.getTransferredBytes();
-				if (contentLength >= 0) {
-					String type = (event.getRequestType() == TransferEvent.RequestType.PUT ? "Uploaded" : "Downloaded");
-					String len = contentLength >= 1024 ? toKB(contentLength) + " KB" : contentLength + " B";
-
-					String throughput = "";
-					long duration = Duration.between(resource.getStartTime(), Instant.now()).toMillis();
-					if (duration > 0) {
-						long bytes = contentLength - resource.getResumeOffset();
-						DecimalFormat format = new DecimalFormat("0.0", new DecimalFormatSymbols(Locale.ENGLISH));
-						double kbPerSec = (bytes / 1024.0) / (duration / 1000.0);
-						throughput = " at " + format.format(kbPerSec) + " KB/sec";
-					}
-
-					log(type + ": " + resource.getRepositoryUrl() + resource.getResourceName() + " (" + len + throughput
-							+ ")");
-
-				}
-			}
-		}
-
-		@Override
-		public void transferFailed(TransferEvent event) {
-			transferCompleted(event);
-
-			if (!(event.getException() instanceof MetadataNotFoundException)) {
-				log(event.getException().toString());
-			}
-		}
-
-		private void transferCompleted(TransferEvent event) {
-			if (event.getResource().getResourceName().indexOf(".jar") != -1) {
-				downloads.remove(event.getResource());
-
-				StringBuilder buffer = new StringBuilder(64);
-				pad(buffer, lastLength);
-				String strBuff = buffer.toString().trim();
-				if (!strBuff.isEmpty()) {
-					log(strBuff, true);
-				}
-			}
-		}
-
-		@Override
-		public void transferCorrupted(TransferEvent event) {
-			log(event.getException().toString());
-		}
-
-		protected long toKB(long bytes) {
-			return (bytes + 1023) / 1024;
-		}
-
-	}
-
-	/**
-	 * A factory for repository system instances that employs Maven Artifact
-	 * Resolver's built-in service locator infrastructure to wire up the system's
-	 * components.
-	 */
-//	static class ManualRepositorySystemFactory
-//	{
-//		private static final Logger LOGGER = LoggerFactory.getLogger( ManualRepositorySystemFactory.class );
-//
-//		public static RepositorySystem newRepositorySystem()
-//		{
-//			/*
-//			 * Aether's components implement org.eclipse.aether.spi.locator.Service to ease manual wiring and using the
-//			 * prepopulated DefaultServiceLocator, we only need to register the repository connector and transporter
-//			 * factories.
-//			 */
-//			
-//			@SuppressWarnings("deprecation")
-//			DefaultServiceLocator locator = MavenRepositorySystemUtils.newServiceLocator();
-//			locator.addService( RepositoryConnectorFactory.class, BasicRepositoryConnectorFactory.class );
-//			locator.addService( TransporterFactory.class, FileTransporterFactory.class );
-//			locator.addService( TransporterFactory.class, HttpTransporterFactory.class );
-//
-//			locator.setErrorHandler( new DefaultServiceLocator.ErrorHandler()
-//			{
-//				@Override
-//				public void serviceCreationFailed( Class<?> type, Class<?> impl, Throwable exception )
-//				{
-//					LOGGER.error( "Service creation failed for {} with implementation {}",
-//							type, impl, exception );
-//				}
-//			} );
-//
-//			return locator.getService( RepositorySystem.class );
-//		}
-//
-//	}
-
-	/**
-	 * A helper to boot the repository system and a repository system session.
-	 */
-//	static class Booter
-//	{
-//
-//		public static RepositorySystem newRepositorySystem()
-//		{
-//			return ManualRepositorySystemFactory.newRepositorySystem();
-//		}
-//
-//		public static DefaultRepositorySystemSession newRepositorySystemSession( RepositorySystem system )
-//		{
-//			DefaultRepositorySystemSession session = MavenRepositorySystemUtils.newSession();
-//
-//			LocalRepository localRepo = new LocalRepository( IJ.getDirectory("imagej")+LOCAL_REPO );
-//			session.setLocalRepositoryManager( system.newLocalRepositoryManager( session, localRepo ) );
-//
-//			session.setTransferListener( new ConsoleTransferListener() );
-//			session.setRepositoryListener( new ConsoleRepositoryListener() );
-//
-//			// uncomment to generate dirty trees
-//			// session.setDependencyGraphTransformer( null );
-//
-//			return session;
-//		}
-//
-//		public static List<RemoteRepository> newRepositories( RepositorySystem system, RepositorySystemSession session )
-//		{
-//			return new ArrayList<>( Collections.singletonList( newCentralRepository() ) );
-//		}
-//
-//		private static RemoteRepository newCentralRepository()
-//		{
-//			return new RemoteRepository.Builder( "central", "default", BASE_REPO ).build();
-//		}
-//
-//	}
-
-	private static class Booter {
-		public static RepositorySystem newRepositorySystem() {
-			return SupplierRepositorySystemFactory.newRepositorySystem();
-		}
-
-		public static SessionBuilder newRepositorySystemSession(RepositorySystem system) {
-			Path localRepoPath = FileSystems.getDefault().getPath(IJ.getDirectory(IMAGEJ_NAME) + LOCAL_REPO);
-			return new SessionBuilderSupplier(system).get().setSystemProperties(System.getProperties())
-					.withLocalRepositoryBaseDirectories(localRepoPath)
-					.setRepositoryListener(new ConsoleRepositoryListener())
-					.setTransferListener(new ConsoleTransferListener())
-					.setConfigProperty(ConflictResolver.CONFIG_PROP_VERBOSE, true)
-					.setConfigProperty(DependencyManagerUtils.CONFIG_PROP_VERBOSE, true)
-					.setSystemProperty("javacpp.platform", platformSpecifier);
-		}
-
-		public static List<RemoteRepository> newRepositories() {
-			return new ArrayList<>(Collections.singletonList(newCentralRepository()));
-		}
-
-		private static RemoteRepository newCentralRepository() {
-			return new RemoteRepository.Builder("central", "default", BASE_REPO).build();
-		}
-	}
-
-	private static class SupplierRepositorySystemFactory {
-		public static RepositorySystem newRepositorySystem() {
-			return new RepositorySystemSupplier().get();
-		}
-	}
 
 	/**
 	 * Determines and return all available versions of an artifact.
@@ -876,7 +452,7 @@ public class JavaCV_Installer implements PlugIn {
 
 		// append all interdependencies
 		if (showInfoMsg)
-			log("Checking interdependencies...");
+			IJLog.log("Checking interdependencies...");
 		if (new VerParser(reqVersion).compareTo(new VerParser("1.4.4")) > 0) {
 			ArtifactDescriptorRequest dRequest = new ArtifactDescriptorRequest();
 			dRequest.setRepositories(Booter.newRepositories());
@@ -887,7 +463,7 @@ public class JavaCV_Installer implements PlugIn {
 						"org.bytedeco:" + reqComp.getArtifactName() + ":" + reqComp.getVersion());
 				dRequest.setArtifact(art);
 				if (showInfoMsg)
-					log(art.toString() + "...", true);
+					IJLog.log(art.toString() + "...", true);
 				ArtifactDescriptorResult descriptorResult = repSystem.readArtifactDescriptor(repSession, dRequest);
 				for (Dependency dependency : descriptorResult.getDependencies()) {
 					String artId = dependency.getArtifact().getArtifactId();
@@ -898,14 +474,14 @@ public class JavaCV_Installer implements PlugIn {
 							reqComps.add(compname);
 							reqJavaCVComps.add(new JavaCVComponent(artId, dependency.getArtifact().getVersion()));
 							if (showInfoMsg)
-								log(reqComp.getName() + " depends on " + compname);
+								IJLog.log(reqComp.getName() + " depends on " + compname);
 						}
 					}
 				}
 			}
 		}
 		if (showInfoMsg)
-			log("Final list of required components: " + reqComps);
+			IJLog.log("Final list of required components: " + reqComps);
 
 		// set resolve filters
 		allComps.removeAll(reqComps);
@@ -928,10 +504,10 @@ public class JavaCV_Installer implements PlugIn {
 		DependencyRequest dependencyRequest = new DependencyRequest(collectRequest, filter);
 		// resolve!
 		if (showInfoMsg)
-			log("Resolving dependencies...");
+			IJLog.log("Resolving dependencies...");
 		DependencyResult depRes = repSystem.resolveDependencies(repSession, dependencyRequest);
 		if (showInfoMsg && depRes != null)
-			log("Done");
+			IJLog.log("Done");
 		List<ArtifactResult> gplList;
 		List<ArtifactResult> depList;
 		depList = new ArrayList<>(new HashSet<>(depRes.getArtifactResults()));
@@ -940,7 +516,7 @@ public class JavaCV_Installer implements PlugIn {
 		DependencyResult depRes_gpl = null;
 		if (reqComps.contains("ffmpeg") && new VerParser(reqVersion).compareTo(new VerParser("1.5.4")) > 0) {
 			if (showInfoMsg)
-				log("Resolving optional ffmpeg-gpl dependencies...");
+				IJLog.log("Resolving optional ffmpeg-gpl dependencies...");
 			String ffmpegVersion = "";
 			for (ArtifactResult artifactResult : depRes.getArtifactResults()) {
 				if (artifactResult.getArtifact().getArtifactId().indexOf("ffmpeg-platform") != -1) {
@@ -959,7 +535,7 @@ public class JavaCV_Installer implements PlugIn {
 				depRes_gpl = repSystem.resolveDependencies(repSession, dependencyRequest);
 				if (!depRes_gpl.getArtifactResults().isEmpty()) {
 					if (showInfoMsg)
-						log("Optional ffmpeg-gpl dependencies are resolved");
+						IJLog.log("Optional ffmpeg-gpl dependencies are resolved");
 					Predicate<ArtifactResult> ffmpegPlatformGpl = x -> x.getArtifact().getArtifactId()
 							.equals("ffmpeg-platform-gpl");
 					Predicate<ArtifactResult> natLibGpl = x -> x.getArtifact().getClassifier()
@@ -977,9 +553,9 @@ public class JavaCV_Installer implements PlugIn {
 						depList.removeAll(removesList);
 					}
 				} else if (showInfoMsg)
-					log("No optional gpl dependencies resolved");
+					IJLog.log("No optional gpl dependencies resolved");
 			} else if (showInfoMsg)
-				log("ffmpeg version is not found");
+				IJLog.log("ffmpeg version is not found");
 		}
 
 		if (depRes_gpl != null) {
@@ -1052,7 +628,7 @@ public class JavaCV_Installer implements PlugIn {
 		public boolean install() throws Exception {
 
 			if (!(new File(srcPath)).exists()) {
-				log("Source file not found " + srcPath);
+				IJLog.log("Source file not found " + srcPath);
 				if (showInfoMsg)
 					IJ.showMessage(DIALOG_TITLE, "Source file not found\n" + srcPath);
 				Prefs.set("javacv.install_result", "source file not found");
@@ -1063,14 +639,14 @@ public class JavaCV_Installer implements PlugIn {
 			File directory = new File(dstDirectory);
 
 			if (!directory.exists() && !directory.mkdirs()) {
-				log("Can't create folder " + dstDirectory);
+				IJLog.log("Can't create folder " + dstDirectory);
 				if (showInfoMsg)
 					IJ.showMessage(DIALOG_TITLE, "Can't create folder\n" + dstDirectory);
 				Prefs.set("javacv.install_result", "cannot create update folder");
 				return false;
 			}
 			if (!directory.canWrite()) {
-				log("No permissions to write to folder " + dstDirectory);
+				IJLog.log("No permissions to write to folder " + dstDirectory);
 				if (showInfoMsg)
 					IJ.showMessage(DIALOG_TITLE, "No permissions to write to folder\n" + depDirectory);
 				Prefs.set("javacv.install_result", "cannot write update folder");
@@ -1095,14 +671,14 @@ public class JavaCV_Installer implements PlugIn {
 			File directory = new File(dstDirectory);
 
 			if (!directory.exists() && !directory.mkdirs()) {
-				log("Can't create folder " + dstDirectory);
+				IJLog.log("Can't create folder " + dstDirectory);
 				if (showInfoMsg)
 					IJ.showMessage(DIALOG_TITLE, "Can't create folder\n" + dstDirectory);
 				Prefs.set("javacv.install_result", "cannot create update folder");
 				return false;
 			}
 			if (!directory.canWrite()) {
-				log("No permissions to write to folder " + dstDirectory);
+				IJLog.log("No permissions to write to folder " + dstDirectory);
 				if (showInfoMsg)
 					IJ.showMessage(DIALOG_TITLE, "No permissions to write to folder\n" + dstDirectory);
 				Prefs.set("javacv.install_result", "cannot write update folder");
@@ -1283,10 +859,10 @@ public class JavaCV_Installer implements PlugIn {
 		List<JavaCVComponent> result = compsByVer.get(version);
 		if (result == null) {
 			if (versions == null || versions.isEmpty()) {
-				log("Information about JavaCV versions is not available");
+				IJLog.log("Information about JavaCV versions is not available");
 				return null;
 			} else if (!versions.contains(version)) {
-				log("Requested JavaCV version (" + version + ") is unknown");
+				IJLog.log("Requested JavaCV version (" + version + ") is unknown");
 				return null;
 			}
 			result = new ArrayList<>();
@@ -1327,7 +903,7 @@ public class JavaCV_Installer implements PlugIn {
 		return false;
 	}
 
-	static boolean isFileConflicting(Path path, String reqVersion) {
+	static boolean isFileConflicting(Path path, String reqVersion, String currentVersion) {
 		String name = path.getFileName().toString();
 		String platformName = platformSpecifier.substring(0, platformSpecifier.indexOf("-"));
 		// GenericVersionScheme gvs = new GenericVersionScheme();
@@ -1341,7 +917,8 @@ public class JavaCV_Installer implements PlugIn {
 		}
 		String ver = JavaCV_Installer_launcher.getJarVersion(name);
 		VerParser chkVer = new VerParser(ver);
-		return ((!isInstalledVersionValid() || chkVer.compareTo(new VerParser(installedJavaCVVersion)) != 0)
+		return ((!isInstalledVersionValid() || currentVersion == null || currentVersion.isEmpty()
+				|| chkVer.compareTo(new VerParser(currentVersion)) != 0)
 				&& chkVer.compareTo(new VerParser(reqVersion)) != 0);
 	}
 
@@ -1385,7 +962,7 @@ public class JavaCV_Installer implements PlugIn {
 		if (isInstalledVersionValid()
 				&& new VerParser(minVersion).compareTo(new VerParser(installedJavaCVVersion)) <= 0) {
 			if (showInfoMsg)
-				log("Installed JavaCV version is acceptable");
+				IJLog.log("Installed JavaCV version is acceptable");
 			return checkJavaCV(reqCompNames);
 		}
 		return checkJavaCV(reqCompNames, minVersion);
@@ -1430,10 +1007,10 @@ public class JavaCV_Installer implements PlugIn {
 		showInfoMsg = showOptDlg && macroOptions == null;
 
 		if (showInfoMsg) {
-			log("JavaCV installation config:");
-			log("installed version - " + installedJavaCVVersion);
-			log("installed components - " + installedComponents);
-			log("Available javacv versions - " + versions);
+			IJLog.log("JavaCV installation config:");
+			IJLog.log("installed version - " + installedJavaCVVersion);
+			IJLog.log("installed components - " + installedComponents);
+			IJLog.log("Available javacv versions - " + versions);
 		}
 
 		if (reqVersion == null || reqVersion.isEmpty())
@@ -1471,8 +1048,8 @@ public class JavaCV_Installer implements PlugIn {
 					.collect(Collectors.toList());
 		} catch (Exception e3) {
 			if (IJ.debugMode) {
-				log(e3.getLocalizedMessage());
-				log(e3.toString());
+				IJLog.log(e3.getLocalizedMessage());
+				IJLog.log(e3.toString());
 			}
 		}
 
@@ -1493,7 +1070,7 @@ public class JavaCV_Installer implements PlugIn {
 					macroConfirmed = true;
 				} else {
 //					if (showInfoMsg) {
-//						ConfirmDialog cd = new ConfirmDialog( messageTitle, autoInstallMsg);
+//						ConfirmDialog cd = new ConfirmDiaIJLog.log( messageTitle, autoInstallMsg);
 //						if(!cd.wasOKed()) {
 //							Prefs.set("javacv.install_result", "canceled");
 //							return false;
@@ -1505,7 +1082,7 @@ public class JavaCV_Installer implements PlugIn {
 					for (String comp : optionalCompList) {
 						if (macroOptions.indexOf(comp) > -1 && !installedComponents.contains(comp)) {
 //							if (showInfoMsg) {
-//								ConfirmDialog cd = new ConfirmDialog( messageTitle, autoInstallMsg);
+//								ConfirmDialog cd = new ConfirmDiaIJLog.log( messageTitle, autoInstallMsg);
 //								if(!cd.wasOKed()) {
 //									Prefs.set("javacv.install_result", "canceled");
 //									return false;
@@ -1531,7 +1108,7 @@ public class JavaCV_Installer implements PlugIn {
 					if (compIndex > -1)
 						compSelection[compIndex] = true;
 					else
-						log("Component (" + dep + ") is not available in version " + reqVersion);
+						IJLog.log("Component (" + dep + ") is not available in version " + reqVersion);
 				}
 			}
 		}
@@ -1555,7 +1132,7 @@ public class JavaCV_Installer implements PlugIn {
 						cb.setEnabled(false);
 
 					String selectedVersion = versionChoice.getSelectedItem();
-					log("Requesting components avalable in version " + selectedVersion + "...", true);
+					IJLog.log("Requesting components avalable in version " + selectedVersion + "...", true);
 					try {
 						optionalCompNames = getComponentsByVer(selectedVersion).stream().map(JavaCVComponent::getName)
 								.sorted().collect(Collectors.toList()).toArray(new String[0]);
@@ -1563,7 +1140,7 @@ public class JavaCV_Installer implements PlugIn {
 						e1.printStackTrace();
 					}
 					if (showInfoMsg)
-						log("Components available in " + selectedVersion + ": " + Arrays.asList(optionalCompNames));
+						IJLog.log("Components available in " + selectedVersion + ": " + Arrays.asList(optionalCompNames));
 					compSelection = new boolean[optionalCompNames.length];
 					for (int i = 0; i < compSelection.length; i++)
 						compSelection[i] = false;
@@ -1589,7 +1166,7 @@ public class JavaCV_Installer implements PlugIn {
 				e1.printStackTrace();
 			}
 			if (showInfoMsg)
-				log("Components available in " + versionChoice.getSelectedItem() + ": "
+				IJLog.log("Components available in " + versionChoice.getSelectedItem() + ": "
 						+ Arrays.asList(optionalCompNames));
 			compSelection = new boolean[optionalCompNames.length];
 			for (int i = 0; i < compSelection.length; i++)
@@ -1633,7 +1210,7 @@ public class JavaCV_Installer implements PlugIn {
 
 		if (doesInstalledVersionMeet(reqVersion, treatAsMinVer)) {
 			if (showInfoMsg)
-				log("The installed JavaCV version meets the minimum requirements");
+				IJLog.log("The installed JavaCV version meets the minimum requirements");
 			reqVersion = installedJavaCVVersion;
 		}
 
@@ -1642,15 +1219,15 @@ public class JavaCV_Installer implements PlugIn {
 			if (compSelection[i])
 				reqComps.add(optionalCompNames[i]);
 		if (showInfoMsg) {
-			log("Requested JavaCV version: " + reqVersion);
-			log("Requested components: " + reqComps);
+			IJLog.log("Requested JavaCV version: " + reqVersion);
+			IJLog.log("Requested components: " + reqComps);
 		}
 
 		List<ArtifactResult> artifactResults = new ArrayList<>();
 		try {
 			artifactResults = resolveDependencies(reqVersion, reqComps);
 			if (artifactResults == null) {
-				log("Dependencies are not resolved for some reason. The presence of the required files could not be verified.");
+				IJLog.log("Dependencies are not resolved for some reason. The presence of the required files could not be verified.");
 				Prefs.set("javacv.install_result", "dependencies are not resolved");
 				return false;
 			}
@@ -1659,7 +1236,7 @@ public class JavaCV_Installer implements PlugIn {
 		}
 
 		if (showInfoMsg)
-			log("Resolved dependencies:");
+			IJLog.log("Resolved dependencies:");
 		dependencies = new ArrayList<>();
 		for (ArtifactResult artifactResult : artifactResults) {
 			Artifact artifact = artifactResult.getArtifact();
@@ -1668,13 +1245,14 @@ public class JavaCV_Installer implements PlugIn {
 			String dstDir = artifact.getClassifier().isEmpty() ? depsPath : natLibsPath;
 			dependencies.add(new JavaCVDependency(fileName, dstDir, srcPath));
 			if (showInfoMsg)
-				log(artifact.toString() + " resolved to " + srcPath);
+				IJLog.log(artifact.toString() + " resolved to " + srcPath);
 		}
 		if (showInfoMsg)
-			log(" ");
+			IJLog.log(" ");
 
 		boolean installConfirmed = false;
 		boolean installed = true;
+		//Set<String> oldInstalledArtifacts = new HashSet<>(installedArtifacts);
 
 		if (isInstalledVersionValid() && !reqVersion.equalsIgnoreCase(installedJavaCVVersion)) {
 			String msg = "The current installed JavaCV version (" + installedJavaCVVersion + ") will be changed to "
@@ -1687,12 +1265,12 @@ public class JavaCV_Installer implements PlugIn {
 				}
 			}
 
-			log(msg);
-			log("Marking files for deletion on ImageJ restart...");
+			IJLog.log(msg);
+			IJLog.log("Marking files for deletion on ImageJ restart...");
 
 			for (String art : installedArtifacts) {
 
-				log(art);
+				IJLog.log(art);
 				Path artPath = Paths.get(art);
 				try {
 					if (!new JavaCVDependency(artPath.getFileName().toString(),
@@ -1701,8 +1279,8 @@ public class JavaCV_Installer implements PlugIn {
 					}
 				} catch (Exception e1) {
 					e1.printStackTrace();
-					log("Cannot mark file " + artPath.getFileName().toString() + " for removal");
-					log("Install operations are rejected");
+					IJLog.log("Cannot mark file " + artPath.getFileName().toString() + " for removal");
+					IJLog.log("Install operations are rejected");
 					try {
 						Files.walk(Paths.get(updateDirectory)).sorted(Comparator.reverseOrder()).map(Path::toFile)
 								.forEach(File::delete);
@@ -1716,21 +1294,21 @@ public class JavaCV_Installer implements PlugIn {
 			}
 			installedArtifacts.clear();
 			installedComponents.clear();
-			log(" ");
-			log("Installing selected version...");
+			IJLog.log(" ");
+			IJLog.log("Installing selected version...");
 			IJ.log("=======================================");
 		}
 
 		Set<String> newInstalled = new HashSet<>(
 				dependencies.stream().map(x -> x.getDirectory() + x.getName()).collect(Collectors.toList()));
 		boolean installEvent = false;
-		for (JavaCVDependency dep : dependencies)
+		for (JavaCVDependency dep : dependencies) {
 			if (forceReinstall || !dep.isInstalled()) {
 				if (!forceReinstall && !installConfirmed) {
 					if (!(installConfirmed = showInfoMsg || macroConfirmed)) {
 
 //						if (showInfoMsg) {
-//							ConfirmDialog cd = new ConfirmDialog( messageTitle, autoInstallMsg);
+//							ConfirmDialog cd = new ConfirmDiaIJLog.log( messageTitle, autoInstallMsg);
 //							if(!cd.wasOKed()) {
 //								Prefs.set("javacv.install_result", "canceled");
 //								return false;
@@ -1742,44 +1320,53 @@ public class JavaCV_Installer implements PlugIn {
 				try {
 					if (dep.install()) {
 						installEvent = true;
-						log(dep.getName() + " will be installed to " + dep.getDirectory());
+						IJLog.log(dep.getName() + " will be installed to " + dep.getDirectory());
 					} else {
 
 						return false;
 					}
 				} catch (Exception e) {
-					log("Install error: " + e.getMessage());
+					IJLog.log("Install error: " + e.getMessage());
 					e.printStackTrace();
 					installed = false;
 					Prefs.set("javacv.install_result", "cannot install");
 				}
 			}
+		}
 
 		//// Try to cleanup conflicts and previous incorrect installations
 		boolean conflictsFound = false;
 		try {
 			if (showInfoMsg) {
-				log(" ");
-				log("Searching for possible conflicts...");
+				IJLog.log(" ");
+				IJLog.log("Searching for possible conflicts...");
 			}
-			List<String> allComps = getComponentsByVer(reqVersion).stream().map(x -> x.name).sorted()
-					.collect(Collectors.toList());
-			allComps.add("javacv");
-			allComps.add("javacpp");
+			List<JavaCVComponent> allComps = getComponentsByVer(reqVersion);//.stream().map(x -> x.name).sorted()
+					//.collect(Collectors.toList());
+			allComps.add(new JavaCVComponent("javacv", reqVersion));
+			allComps.add(new JavaCVComponent("javacpp", reqVersion));
+			Map<String, String> versionsOfCurrentComps = new HashMap<>();
+			if (isInstalledVersionValid() && !reqVersion.equalsIgnoreCase(installedJavaCVVersion)) {
+				versionsOfCurrentComps = getComponentsByVer(installedJavaCVVersion).stream()
+						.collect(Collectors.toMap(JavaCVComponent::getName, JavaCVComponent::getVersion));
+			}
 			Set<String> checkDirs = new HashSet<>();
 			checkDirs.add(depsPath);
 			checkDirs.add(natLibsPath);
 			for (String checkDir : checkDirs) {
 				if (new File(checkDir).exists())
-					for (String checkComp : allComps) {
+					for (JavaCVComponent checkJavaCVComp : allComps) {
+						String checkComp = checkJavaCVComp.getName();
+						String checkVer = checkJavaCVComp.getVersion();
 						DirectoryStream<Path> dirStream = Files.newDirectoryStream(Paths.get(checkDir),
 								checkComp + "*.jar");
 						for (Path path : dirStream) {
-							if (isFileConflicting(path, reqVersion)) {
+							String currentVersion = versionsOfCurrentComps.get(checkComp);
+							if (isFileConflicting(path, checkVer, currentVersion)) { // reqVersion)) {
 								conflictsFound = true;
 								new JavaCVDependency(path.getFileName().toString(),
 										path.getParent().toString() + File.separator, null).remove();
-								log("Conflicting file will be removed: " + path);
+								IJLog.log("Conflicting file will be removed: " + path);
 							}
 
 						}
@@ -1794,7 +1381,7 @@ public class JavaCV_Installer implements PlugIn {
 
 		if (installConfirmed || forceReinstall) {
 			IJ.showMessage("JavaCV installation", "Please restart ImageJ now");
-			log("ImageJ restart is required after javacv installation!");
+			IJLog.log("ImageJ restart is required after javacv installation!");
 			IJ.log("---------------------------------------------");
 			restartRequired = true;
 		} else

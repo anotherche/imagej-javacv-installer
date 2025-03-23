@@ -13,7 +13,7 @@
 
 	<groupId>anotherche.plugins.imagej</groupId>
 	<artifactId>JavaCV_Installer</artifactId>
-	<version>0.6.0</version>
+	<version>0.6.1</version>
 
 	<name>ImageJ_JavaCV_Installer</name>
 	<url>http://imagej.net/PhotoBend</url>
@@ -36,6 +36,10 @@
 		<repository>
 			<id>imagej.public</id>
 			<url>http://maven.imagej.net/content/groups/public</url>
+		</repository>
+		<repository>
+			<id>scijava.public</id>
+			<url>https://maven.scijava.org/content/groups/public</url>
 		</repository>
 	</repositories>
 
