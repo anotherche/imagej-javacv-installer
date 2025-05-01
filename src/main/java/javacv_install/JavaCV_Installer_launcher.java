@@ -42,28 +42,28 @@ public class JavaCV_Installer_launcher implements PlugIn {
 
 	static {
 		artifacts = new ArrayList<>();
-		artifacts.add(new Artifact("maven-artifact", "3.9.9", APACHEMAVEN + "maven-artifact/"));// 3.6.3
+		artifacts.add(new Artifact("maven-artifact", "3.9.9", APACHEMAVEN + "maven-artifact/"));
 		artifacts.add(new Artifact("maven-builder-support", "3.9.9", APACHEMAVEN + "maven-builder-support/"));
 		artifacts.add(new Artifact("maven-model", "3.9.9", APACHEMAVEN + "maven-model/"));
 		artifacts.add(new Artifact("maven-model-builder", "3.9.9", APACHEMAVEN + "maven-model-builder/"));
 		artifacts.add(new Artifact("maven-repository-metadata", "3.9.9", APACHEMAVEN + "maven-repository-metadata/"));
 		artifacts.add(new Artifact("maven-resolver-provider", "3.9.9", APACHEMAVEN + "maven-resolver-provider/"));
-		artifacts.add(new Artifact("maven-resolver-api", "2.0.7", APACHEMAVEN + "resolver/maven-resolver-api/"));// 1.6.1
-		artifacts.add(new Artifact("maven-resolver-connector-basic", "2.0.7", APACHEMAVEN + "resolver/maven-resolver-connector-basic/"));// 1.6.1
-		artifacts.add(new Artifact("maven-resolver-impl", "2.0.7", APACHEMAVEN + "resolver/maven-resolver-impl/"));// 1.4.1
-		artifacts.add(new Artifact("maven-resolver-spi", "2.0.7", APACHEMAVEN + "resolver/maven-resolver-spi/"));// 1.6.1
+		artifacts.add(new Artifact("maven-resolver-api", "2.0.7", APACHEMAVEN + "resolver/maven-resolver-api/"));
+		artifacts.add(new Artifact("maven-resolver-connector-basic", "2.0.7", APACHEMAVEN + "resolver/maven-resolver-connector-basic/"));
+		artifacts.add(new Artifact("maven-resolver-impl", "2.0.7", APACHEMAVEN + "resolver/maven-resolver-impl/"));
+		artifacts.add(new Artifact("maven-resolver-spi", "2.0.7", APACHEMAVEN + "resolver/maven-resolver-spi/"));
 		artifacts.add(new Artifact("maven-resolver-named-locks", "2.0.7", APACHEMAVEN + "resolver/maven-resolver-named-locks/"));
-		artifacts.add(new Artifact("maven-resolver-transport-file", "2.0.7", APACHEMAVEN + "resolver/maven-resolver-transport-file/"));// 1.1.0
-		artifacts.add(new Artifact("maven-resolver-transport-apache", "2.0.7", APACHEMAVEN + "resolver/maven-resolver-transport-apache/"));// 1.1.0
+		artifacts.add(new Artifact("maven-resolver-transport-file", "2.0.7", APACHEMAVEN + "resolver/maven-resolver-transport-file/"));
+		artifacts.add(new Artifact("maven-resolver-transport-apache", "2.0.7", APACHEMAVEN + "resolver/maven-resolver-transport-apache/"));
 		artifacts.add(new Artifact("maven-resolver-util", "2.0.7", APACHEMAVEN + "resolver/maven-resolver-util/"));// 1.6.1
 		artifacts.add(new Artifact("maven-resolver-supplier-mvn3", "2.0.7", APACHEMAVEN + "resolver/maven-resolver-supplier-mvn3/"));
-		artifacts.add(new Artifact("plexus-interpolation", "1.27", "org/codehaus/plexus/plexus-interpolation/"));// 1.25
+		artifacts.add(new Artifact("plexus-interpolation", "1.27", "org/codehaus/plexus/plexus-interpolation/"));
 		artifacts.add(new Artifact("plexus-utils", "4.0.2", "org/codehaus/plexus/plexus-utils/"));
 		artifacts.add(new Artifact("plexus-xml", "3.0.1", "org/codehaus/plexus/plexus-xml/"));
 		//artifacts.add(new Artifact("slf4j-api", "1.7.30", "org/slf4j/slf4j-api/"));
 		//artifacts.add(new Artifact("jcl-over-slf4j", "1.7.30", "org/slf4j/jcl-over-slf4j/"));
-		artifacts.add(new Artifact("httpcore", "4.4.16", "org/apache/httpcomponents/httpcore/"));// 4.4.13
-		artifacts.add(new Artifact("httpclient", "4.5.14", "org/apache/httpcomponents/httpclient/"));// 4.5.12
+		artifacts.add(new Artifact("httpcore", "4.4.16", "org/apache/httpcomponents/httpcore/"));
+		artifacts.add(new Artifact("httpclient", "4.5.14", "org/apache/httpcomponents/httpclient/"));
 		//artifacts.add(new Artifact("commons-lang3", "3.10", "org/apache/commons/commons-lang3/"));
 		artifacts.add(new Artifact("commons-codec", "1.17.1", "commons-codec/commons-codec/"));
 		//artifacts.add(new Artifact("commons-logging", "1.2", "commons-logging/commons-logging/"));

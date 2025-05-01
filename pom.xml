@@ -13,7 +13,7 @@
 
 	<groupId>anotherche.plugins.imagej</groupId>
 	<artifactId>JavaCV_Installer</artifactId>
-	<version>0.6.1</version>
+	<version>0.6.2</version>
 
 	<name>ImageJ_JavaCV_Installer</name>
 	<url>http://imagej.net/PhotoBend</url>

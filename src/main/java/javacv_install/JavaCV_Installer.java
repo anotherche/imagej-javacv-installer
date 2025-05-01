@@ -88,7 +88,7 @@ public class JavaCV_Installer implements PlugIn {
 
 	// Installation constants
 
-	private static final String INSTALLER_VERSION = "0.6.1";
+	private static final String INSTALLER_VERSION = "0.6.2";
 	private static final String IMAGEJ_NAME = "imagej";
 	private static final String PLATFORM_SUFFIX = "-platform";
 	private static final String DIALOG_TITLE = "JavaCV installation";
@@ -1252,7 +1252,7 @@ public class JavaCV_Installer implements PlugIn {
 
 		boolean installConfirmed = false;
 		boolean installed = true;
-		//Set<String> oldInstalledArtifacts = new HashSet<>(installedArtifacts);
+		Set<String> removedArtifacts = new HashSet<>();
 
 		if (isInstalledVersionValid() && !reqVersion.equalsIgnoreCase(installedJavaCVVersion)) {
 			String msg = "The current installed JavaCV version (" + installedJavaCVVersion + ") will be changed to "
@@ -1276,7 +1276,7 @@ public class JavaCV_Installer implements PlugIn {
 					if (!new JavaCVDependency(artPath.getFileName().toString(),
 							artPath.getParent().toString() + File.separator, null).remove()) {
 						return false;
-					}
+					} else removedArtifacts.add(artPath.getFileName().toString());
 				} catch (Exception e1) {
 					e1.printStackTrace();
 					IJLog.log("Cannot mark file " + artPath.getFileName().toString() + " for removal");
@@ -1361,14 +1361,15 @@ public class JavaCV_Installer implements PlugIn {
 						DirectoryStream<Path> dirStream = Files.newDirectoryStream(Paths.get(checkDir),
 								checkComp + "*.jar");
 						for (Path path : dirStream) {
-							String currentVersion = versionsOfCurrentComps.get(checkComp);
-							if (isFileConflicting(path, checkVer, currentVersion)) { // reqVersion)) {
-								conflictsFound = true;
-								new JavaCVDependency(path.getFileName().toString(),
-										path.getParent().toString() + File.separator, null).remove();
-								IJLog.log("Conflicting file will be removed: " + path);
+							if(!removedArtifacts.contains(path.getFileName().toString())) {
+								String currentVersion = versionsOfCurrentComps.get(checkComp);
+								if (isFileConflicting(path, checkVer, currentVersion)) { // reqVersion)) {
+									conflictsFound = true;
+									new JavaCVDependency(path.getFileName().toString(),
+											path.getParent().toString() + File.separator, null).remove();
+									IJLog.log("Conflicting file will be removed: " + path);
+								}
 							}
-
 						}
 					}
 			}
