@@ -88,7 +88,7 @@ public class JavaCV_Installer implements PlugIn {
 
 	// Installation constants
 
-	private static final String INSTALLER_VERSION = "0.6.2";
+	private static final String INSTALLER_VERSION = "0.6.3";
 	private static final String IMAGEJ_NAME = "imagej";
 	private static final String PLATFORM_SUFFIX = "-platform";
 	private static final String DIALOG_TITLE = "JavaCV installation";
@@ -230,7 +230,7 @@ public class JavaCV_Installer implements PlugIn {
 			if (checkJavaCV(null, null, true, false)) {
 				if (Macro.getOptions() == null) {
 					IJLog.log("javacv is installed");
-					IJ.log("---------------------------------------------");
+					IJLog.log("---------------------------------------------");
 				}
 
 			} else
@@ -253,7 +253,7 @@ public class JavaCV_Installer implements PlugIn {
 			if (checkJavaCV(components, version, !beQuiet, force)) {
 				if (Macro.getOptions() == null) {
 					IJLog.log("javacv is installed");
-					IJ.log("---------------------------------------------");
+					IJLog.log("---------------------------------------------");
 				}
 
 			} else
@@ -264,9 +264,21 @@ public class JavaCV_Installer implements PlugIn {
 	private static void readInstallCfg() throws SAXException, IOException, ParserConfigurationException {
 
 		File xmlFile = new File(installerDirectory + "installcfg.xml");
-//		IJ.IJLog.log("xmlFile: "+xmlFile.getPath());
-		if (!xmlFile.exists())
+		if (!xmlFile.exists()) {
+			IJLog.log("Config file not found. Trying to find out if ImageJ already uses some version of JavaCV...");
+			if (new File(depsPath).exists()) {
+				DirectoryStream<Path> dirStream = Files.newDirectoryStream(Paths.get(depsPath), "javacpp-*.jar");
+				for (Path path : dirStream) {
+					String jarName = path.getFileName().toString();
+					if(jarName.indexOf("platform") == -1) {
+						installedJavaCVVersion = JavaCV_Installer_launcher.getJarVersion(jarName);
+					}
+				}
+			}
+			if (installedJavaCVVersion != null)	IJLog.log("The intended version of JavaCV is " + installedJavaCVVersion);
+			else IJLog.log("JavaCV installation not found.");
 			return;
+		}
 
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder dBuilder = factory.newDocumentBuilder();
@@ -1007,9 +1019,10 @@ public class JavaCV_Installer implements PlugIn {
 		showInfoMsg = showOptDlg && macroOptions == null;
 
 		if (showInfoMsg) {
+			IJLog.log("JavaCV Installer version: " + INSTALLER_VERSION);
 			IJLog.log("JavaCV installation config:");
-			IJLog.log("installed version - " + installedJavaCVVersion);
-			IJLog.log("installed components - " + installedComponents);
+			IJLog.log("Installed version - " + installedJavaCVVersion);
+			IJLog.log("Installed components - " + installedComponents);
 			IJLog.log("Available javacv versions - " + versions);
 		}
 
@@ -1296,7 +1309,7 @@ public class JavaCV_Installer implements PlugIn {
 			installedComponents.clear();
 			IJLog.log(" ");
 			IJLog.log("Installing selected version...");
-			IJ.log("=======================================");
+			IJLog.log("=======================================");
 		}
 
 		Set<String> newInstalled = new HashSet<>(
@@ -1383,7 +1396,7 @@ public class JavaCV_Installer implements PlugIn {
 		if (installConfirmed || forceReinstall) {
 			IJ.showMessage("JavaCV installation", "Please restart ImageJ now");
 			IJLog.log("ImageJ restart is required after javacv installation!");
-			IJ.log("---------------------------------------------");
+			IJLog.log("---------------------------------------------");
 			restartRequired = true;
 		} else
 			restartRequired = false;

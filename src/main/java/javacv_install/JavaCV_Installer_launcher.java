@@ -97,7 +97,7 @@ public class JavaCV_Installer_launcher implements PlugIn {
 		if (checkDependencies(false, false)) {
 //			if(restartRequired) {
 //				Prefs.set("javacv.install_result_launcher", "restart required");
-//				IJ.log("Please restart ImageJ to proceed with installation of necessary JavaCV libraries.");
+//				IJLog.log("Please restart ImageJ to proceed with installation of necessary JavaCV libraries.");
 //				IJ.showMessage(msgTitle, "Please restart ImageJ to proceed with installation of necessary JavaCV libraries.");
 //				return;
 //			}
@@ -105,7 +105,7 @@ public class JavaCV_Installer_launcher implements PlugIn {
 
 				restartRequired = true;
 				Prefs.set("javacv.install_result_launcher", "restart required");
-				IJ.log("Please restart ImageJ to proceed with installation of necessary JavaCV libraries.");
+				IJLog.log("Please restart ImageJ to proceed with installation of necessary JavaCV libraries.");
 				IJ.showMessage(MSG_TITLE,
 						"Please restart ImageJ to proceed with installation of necessary JavaCV libraries.");
 			} else {
@@ -254,7 +254,7 @@ public class JavaCV_Installer_launcher implements PlugIn {
 			if (!checkCreateDirectory(depDirectory))
 				return success;
 
-			IJ.log("downloading " + depURL);
+			IJLog.log("downloading " + depURL);
 			InputStream is = null;
 			URL url = null;
 			try {
@@ -268,7 +268,7 @@ public class JavaCV_Installer_launcher implements PlugIn {
 			}
 			byte[] content = readFully(is);
 			File out = new File(depDirectory, new File(url.getFile()).getName());
-			IJ.log(" to " + out.getAbsolutePath());
+			IJLog.log(" to " + out.getAbsolutePath());
 			FileOutputStream fos = null;
 			try {
 				fos = new FileOutputStream(out);
@@ -340,12 +340,12 @@ public class JavaCV_Installer_launcher implements PlugIn {
 	static boolean checkCreateDirectory(String path) {
 		File directory = new File(path);
 		if (!directory.exists() && !directory.mkdirs()) {
-			IJ.log("Can't create folder " + path);
+			IJLog.log("Can't create folder " + path);
 			IJ.showMessage(MSG_TITLE, "Can't create folder\n" + path);
 			return false;
 		}
 		if (!directory.canWrite()) {
-			IJ.log("No permissions to write to folder " + path);
+			IJLog.log("No permissions to write to folder " + path);
 			IJ.showMessage(MSG_TITLE, "No permissions to write to folder\n" + path);
 			return false;
 		}
@@ -439,7 +439,7 @@ public class JavaCV_Installer_launcher implements PlugIn {
 					}
 				} catch (Exception e) {
 					IJ.error(e.getMessage());
-					IJ.log(e.getMessage());
+					IJLog.log(e.getMessage());
 					e.printStackTrace();
 					installed = false;
 				}
@@ -448,7 +448,7 @@ public class JavaCV_Installer_launcher implements PlugIn {
 		// if (installConfirmed || forceReinstall) {
 //		if (installEvent) {
 //			IJ.showMessage("JavaCV installer deployment", "Please restart ImageJ now");
-//			IJ.log("ImageJ restart is required after javacv installation!");
+//			IJLog.log("ImageJ restart is required after javacv installation!");
 //			restartRequired = true;
 //		} else restartRequired = false;
 		return installed;
@@ -463,15 +463,15 @@ public class JavaCV_Installer_launcher implements PlugIn {
 			for (String jarFile : jarFiles) {
 				if (Paths.get(jarFile).compareTo(Paths.get(path, fileName)) != 0) {
 					removeFile(jarFile);
-					// IJ.log("Remove file "+jarFile+" CONFLICTING WITH "+Paths.get(path,
+					// IJLog.log("Remove file "+jarFile+" CONFLICTING WITH "+Paths.get(path,
 					// fileName).toString());
 					remove = true;
 				}
 			}
 		} catch (Exception e) {
 			if (IJ.debugMode) {
-				IJ.log(e.getLocalizedMessage());
-				IJ.log(e.toString());
+				IJLog.log(e.getLocalizedMessage());
+				IJLog.log(e.toString());
 			}
 		}
 		return remove;
@@ -495,8 +495,8 @@ public class JavaCV_Installer_launcher implements PlugIn {
 			(new File(dstPath)).createNewFile();
 			return true;
 		} catch (IOException e) {
-			IJ.log(e.toString());
-			IJ.log("WARNING: Cannot write update folder for cleanup: " + dstPath);
+			IJLog.log(e.toString());
+			IJLog.log("WARNING: Cannot write update folder for cleanup: " + dstPath);
 			// Prefs.set("javacv.install_result", "cannot write update folder");
 			return false;
 		}
