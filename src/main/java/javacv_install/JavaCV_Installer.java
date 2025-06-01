@@ -88,7 +88,7 @@ public class JavaCV_Installer implements PlugIn {
 
 	// Installation constants
 
-	private static final String INSTALLER_VERSION = "0.6.3";
+	private static final String INSTALLER_VERSION = "0.6.4";
 	private static final String IMAGEJ_NAME = "imagej";
 	private static final String PLATFORM_SUFFIX = "-platform";
 	private static final String DIALOG_TITLE = "JavaCV installation";
@@ -267,16 +267,28 @@ public class JavaCV_Installer implements PlugIn {
 		if (!xmlFile.exists()) {
 			IJLog.log("Config file not found. Trying to find out if ImageJ already uses some version of JavaCV...");
 			if (new File(depsPath).exists()) {
-				DirectoryStream<Path> dirStream = Files.newDirectoryStream(Paths.get(depsPath), "javacpp-*.jar");
-				for (Path path : dirStream) {
-					String jarName = path.getFileName().toString();
-					if(jarName.indexOf("platform") == -1) {
-						installedJavaCVVersion = JavaCV_Installer_launcher.getJarVersion(jarName);
-					}
+				
+				List<Path> javacppJarList = new ArrayList<>();
+				listFiles(Paths.get(depsPath), "javacpp-\\d.*\\.jar", false,  javacppJarList);
+				if (javacppJarList.size() == 1) {
+					installedJavaCVVersion = JavaCV_Installer_launcher.getJarVersion(javacppJarList.get(0).getFileName().toString());
+					IJLog.log("The intended version of JavaCV is " + installedJavaCVVersion);
+				} else if (javacppJarList.size() > 1) {
+					IJLog.log("Traces of multiple JavaCV versions found. The version is unknown.");
+				} else {
+					IJLog.log("JavaCV installation not found.");
 				}
+				
+//				DirectoryStream<Path> dirStream = Files.newDirectoryStream(Paths.get(depsPath), "javacpp-*.jar");
+//				for (Path path : javacppJarList) {
+//					String jarName = path.getFileName().toString();
+//					if(jarName.indexOf("platform") == -1) {
+//						installedJavaCVVersion = JavaCV_Installer_launcher.getJarVersion(jarName);
+//					}
+//				}
 			}
-			if (installedJavaCVVersion != null)	IJLog.log("The intended version of JavaCV is " + installedJavaCVVersion);
-			else IJLog.log("JavaCV installation not found.");
+//			if (installedJavaCVVersion != null)	IJLog.log("The intended version of JavaCV is " + installedJavaCVVersion);
+//			else IJLog.log("JavaCV installation not found.");
 			return;
 		}
 
@@ -858,8 +870,9 @@ public class JavaCV_Installer implements PlugIn {
 
 		if (fiji) {
 			depsPath = fijiJarsPath;
-			natLibsPath = depsPath + (IJ.isLinux() ? (IJ.is64Bit() ? "linux64" : "linux32")
-					: (IJ.isWindows() ? (IJ.is64Bit() ? "win64" : "win32") : "macosx")) + File.separator;
+//			natLibsPath = depsPath + (IJ.isLinux() ? (IJ.is64Bit() ? "linux64" : "linux32")
+//					: (IJ.isWindows() ? (IJ.is64Bit() ? "win64" : "win32") : "macosx")) + File.separator;
+			natLibsPath = depsPath + getNatDirName() + File.separator;
 		} else {
 			depsPath = ijJarsPath;
 			natLibsPath = depsPath;
@@ -918,20 +931,20 @@ public class JavaCV_Installer implements PlugIn {
 	static boolean isFileConflicting(Path path, String reqVersion, String currentVersion) {
 		String name = path.getFileName().toString();
 		String platformName = platformSpecifier.substring(0, platformSpecifier.indexOf("-"));
-		// GenericVersionScheme gvs = new GenericVersionScheme();
 		int platformIndex = name.indexOf(platformName);
 		if (platformIndex > 0) {
-			String check64bit = name.substring(platformIndex + platformName.length() + 4);
-			boolean is64bit = check64bit.startsWith("_64");
-			if ((is64bit && !IJ.is64Bit()) || (!is64bit && IJ.is64Bit())) {
+			String check64bit = name.substring(platformIndex);
+			boolean is64bit = (check64bit.indexOf("64") != -1);//startsWith("_64") || check64bit.startsWith("64");
+			if ((is64bit && !IJ.is64Bit()) || (!is64bit && IJ.is64Bit())) { IJLog.log("conflict!! bits");
 				return true;
 			}
 		}
 		String ver = JavaCV_Installer_launcher.getJarVersion(name);
 		VerParser chkVer = new VerParser(ver);
-		return ((!isInstalledVersionValid() || currentVersion == null || currentVersion.isEmpty()
+		boolean conflict = ((!isInstalledVersionValid() || currentVersion == null || currentVersion.isEmpty()
 				|| chkVer.compareTo(new VerParser(currentVersion)) != 0)
 				&& chkVer.compareTo(new VerParser(reqVersion)) != 0);
+		return conflict;
 	}
 
 	/**
@@ -1265,7 +1278,7 @@ public class JavaCV_Installer implements PlugIn {
 
 		boolean installConfirmed = false;
 		boolean installed = true;
-		Set<String> removedArtifacts = new HashSet<>();
+		Set<Path> removedArtifacts = new HashSet<>();
 
 		if (isInstalledVersionValid() && !reqVersion.equalsIgnoreCase(installedJavaCVVersion)) {
 			String msg = "The current installed JavaCV version (" + installedJavaCVVersion + ") will be changed to "
@@ -1289,7 +1302,7 @@ public class JavaCV_Installer implements PlugIn {
 					if (!new JavaCVDependency(artPath.getFileName().toString(),
 							artPath.getParent().toString() + File.separator, null).remove()) {
 						return false;
-					} else removedArtifacts.add(artPath.getFileName().toString());
+					} else removedArtifacts.add(artPath);
 				} catch (Exception e1) {
 					e1.printStackTrace();
 					IJLog.log("Cannot mark file " + artPath.getFileName().toString() + " for removal");
@@ -1354,7 +1367,7 @@ public class JavaCV_Installer implements PlugIn {
 				IJLog.log(" ");
 				IJLog.log("Searching for possible conflicts...");
 			}
-			List<JavaCVComponent> allComps = getComponentsByVer(reqVersion);//.stream().map(x -> x.name).sorted()
+			List<JavaCVComponent> allComps = new ArrayList<>(getComponentsByVer(reqVersion));//.stream().map(x -> x.name).sorted()
 					//.collect(Collectors.toList());
 			allComps.add(new JavaCVComponent("javacv", reqVersion));
 			allComps.add(new JavaCVComponent("javacpp", reqVersion));
@@ -1365,16 +1378,20 @@ public class JavaCV_Installer implements PlugIn {
 			}
 			Set<String> checkDirs = new HashSet<>();
 			checkDirs.add(depsPath);
-			checkDirs.add(natLibsPath);
+			//checkDirs.add(natLibsPath);
 			for (String checkDir : checkDirs) {
 				if (new File(checkDir).exists())
 					for (JavaCVComponent checkJavaCVComp : allComps) {
 						String checkComp = checkJavaCVComp.getName();
 						String checkVer = checkJavaCVComp.getVersion();
-						DirectoryStream<Path> dirStream = Files.newDirectoryStream(Paths.get(checkDir),
-								checkComp + "*.jar");
-						for (Path path : dirStream) {
-							if(!removedArtifacts.contains(path.getFileName().toString())) {
+						List<Path> jarList = new ArrayList<>();
+						listFiles(Paths.get(checkDir), checkComp + ".*\\.jar", true,  jarList);
+//						IJLog.log("Files check for  " + checkComp + "*.jar LIST SIZE: "  + jarList.size());
+//						DirectoryStream<Path> dirStream = Files.newDirectoryStream(Paths.get(checkDir),
+//								checkComp + "*.jar");
+						for (Path path : jarList) {
+//							IJLog.log("check path " + path.toString());
+							if(!removedArtifacts.contains(path)) {
 								String currentVersion = versionsOfCurrentComps.get(checkComp);
 								if (isFileConflicting(path, checkVer, currentVersion)) { // reqVersion)) {
 									conflictsFound = true;
@@ -1423,5 +1440,27 @@ public class JavaCV_Installer implements PlugIn {
 		return osarch != null
 				&& (osarch.indexOf("aarch") != -1 || (osarch.indexOf("ARM") != -1) || (osarch.indexOf("arm") != -1));
 	}
+	
+	public static String getNatDirName() {
+		if (!IJ.isLinux() && !IJ.isWindows() && !IJ.isMacOSX()) return "unknownarch";
+		String dirName = (IJ.isLinux() ? "linux" : (IJ.isWindows() ? "win" : "macos"));
+		if (!IJ.is64Bit()) return dirName + "32";
+		if (isARM()) return dirName + "-arm64";
+		if (IJ.isMacOSX()) return dirName + "x";
+		else return dirName + "64";
+	}
+	
+	private static void listFiles(Path startingPath, String pattern, boolean recursive,  List<Path> filesList) throws IOException {
+		try (DirectoryStream<Path> stream = Files.newDirectoryStream(startingPath)) 
+        {
+            for (Path entry : stream) {
+                if (Files.isDirectory(entry)) {
+                    if (recursive) listFiles(entry, pattern, recursive, filesList);
+                } else if (entry.toFile().getName().matches(pattern)) {
+                	filesList.add(entry);
+                }
+            }
+        }
+    }
 
 }
