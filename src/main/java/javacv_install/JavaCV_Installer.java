@@ -928,7 +928,7 @@ public class JavaCV_Installer implements PlugIn {
 		return false;
 	}
 
-	static boolean isFileConflicting(Path path, String reqVersion, String currentVersion) {
+	static boolean isFileConflicting(Path path, String reqVersion, String currentVersion, Set<Path> installedPaths) {
 		String name = path.getFileName().toString();
 		String platformName = platformSpecifier.substring(0, platformSpecifier.indexOf("-"));
 		int platformIndex = name.indexOf(platformName);
@@ -938,6 +938,9 @@ public class JavaCV_Installer implements PlugIn {
 			if ((is64bit && !IJ.is64Bit()) || (!is64bit && IJ.is64Bit())) { IJLog.log("conflict!! bits");
 				return true;
 			}
+		}
+		if (!installedPaths.contains(path)) {
+			return true;
 		}
 		String ver = JavaCV_Installer_launcher.getJarVersion(name);
 		VerParser chkVer = new VerParser(ver);
@@ -1085,8 +1088,8 @@ public class JavaCV_Installer implements PlugIn {
 			boolean treatAsMinVer = macroOptions.indexOf(minVerLabel.toLowerCase(Locale.US)) > -1;
 			if (!doesInstalledVersionMeet(reqVersion, treatAsMinVer)) {
 				if (isInstalledVersionValid()) {
-					ConfirmDialog cd = new ConfirmDialog(messageTitle, "JavaCV version (" + reqVersion
-							+ ") is requested, which is different from the installed (" + installedJavaCVVersion
+					ConfirmDialog cd = new ConfirmDialog(messageTitle, "JavaCV version " + reqVersion
+							+ " is requested, which is different from the installed (" + installedJavaCVVersion
 							+ ").\n"
 							+ "Continue with the installation of the requested version (the current version will be uninstalled)?");
 					if (!cd.wasOKed()) {
@@ -1327,6 +1330,8 @@ public class JavaCV_Installer implements PlugIn {
 
 		Set<String> newInstalled = new HashSet<>(
 				dependencies.stream().map(x -> x.getDirectory() + x.getName()).collect(Collectors.toList()));
+		Set<Path> newInstalledPaths = new HashSet<>(
+				newInstalled.stream().map(x -> Paths.get(x)).collect(Collectors.toList()));
 		boolean installEvent = false;
 		for (JavaCVDependency dep : dependencies) {
 			if (forceReinstall || !dep.isInstalled()) {
@@ -1371,11 +1376,16 @@ public class JavaCV_Installer implements PlugIn {
 					//.collect(Collectors.toList());
 			allComps.add(new JavaCVComponent("javacv", reqVersion));
 			allComps.add(new JavaCVComponent("javacpp", reqVersion));
+			Set<String> checkComponetsSet = new HashSet<>(installedComponents);
+			checkComponetsSet.addAll(reqComps);
+			checkComponetsSet.add("javacv");
+			checkComponetsSet.add("javacpp");
 			Map<String, String> versionsOfCurrentComps = new HashMap<>();
 			if (isInstalledVersionValid() && !reqVersion.equalsIgnoreCase(installedJavaCVVersion)) {
 				versionsOfCurrentComps = getComponentsByVer(installedJavaCVVersion).stream()
 						.collect(Collectors.toMap(JavaCVComponent::getName, JavaCVComponent::getVersion));
 			}
+			
 			Set<String> checkDirs = new HashSet<>();
 			checkDirs.add(depsPath);
 			//checkDirs.add(natLibsPath);
@@ -1383,21 +1393,23 @@ public class JavaCV_Installer implements PlugIn {
 				if (new File(checkDir).exists())
 					for (JavaCVComponent checkJavaCVComp : allComps) {
 						String checkComp = checkJavaCVComp.getName();
-						String checkVer = checkJavaCVComp.getVersion();
-						List<Path> jarList = new ArrayList<>();
-						listFiles(Paths.get(checkDir), checkComp + ".*\\.jar", true,  jarList);
-//						IJLog.log("Files check for  " + checkComp + "*.jar LIST SIZE: "  + jarList.size());
-//						DirectoryStream<Path> dirStream = Files.newDirectoryStream(Paths.get(checkDir),
-//								checkComp + "*.jar");
-						for (Path path : jarList) {
-//							IJLog.log("check path " + path.toString());
-							if(!removedArtifacts.contains(path)) {
-								String currentVersion = versionsOfCurrentComps.get(checkComp);
-								if (isFileConflicting(path, checkVer, currentVersion)) { // reqVersion)) {
-									conflictsFound = true;
-									new JavaCVDependency(path.getFileName().toString(),
-											path.getParent().toString() + File.separator, null).remove();
-									IJLog.log("Conflicting file will be removed: " + path);
+						if (checkComponetsSet.contains(checkComp)) {
+							String checkVer = checkJavaCVComp.getVersion();
+							List<Path> jarList = new ArrayList<>();
+							listFiles(Paths.get(checkDir), checkComp + ".*\\.jar", true,  jarList);
+	//						IJLog.log("Files check for  " + checkComp + "*.jar LIST SIZE: "  + jarList.size());
+	//						DirectoryStream<Path> dirStream = Files.newDirectoryStream(Paths.get(checkDir),
+	//								checkComp + "*.jar");
+							for (Path path : jarList) {
+	//							IJLog.log("check path " + path.toString());
+								if(!removedArtifacts.contains(path)) {
+									String currentVersion = versionsOfCurrentComps.get(checkComp);
+									if (isFileConflicting(path, checkVer, currentVersion, newInstalledPaths)) { // reqVersion)) {
+										conflictsFound = true;
+										new JavaCVDependency(path.getFileName().toString(),
+												path.getParent().toString() + File.separator, null).remove();
+										IJLog.log("Conflicting file will be removed: " + path);
+									}
 								}
 							}
 						}
